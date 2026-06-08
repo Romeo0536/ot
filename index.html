@@ -237,7 +237,6 @@ select.fc option{background:var(--s2);color:var(--text);}
   <button class="tab active" onclick="switchTab('add')">➕<br>บันทึก</button>
   <button class="tab" onclick="switchTab('history')">📅<br>ปฏิทิน</button>
   <button class="tab" onclick="switchTab('summary')">📊<br>สรุป</button>
-  <button class="tab" onclick="switchTab('ai')">🤖<br>AI</button>
   <button class="tab" onclick="switchTab('settings')">⚙️<br>ตั้งค่า</button>
 </div>
 
@@ -246,7 +245,7 @@ select.fc option{background:var(--s2);color:var(--text);}
   <div class="card">
     <div class="card-label">บันทึกโอที</div>
     <div class="form-grid">
-      <div class="fg"><label>📅 วันที่</label><input type="date" class="fc" id="inputDate"></div>
+      <div class="fg"><label>📅 วันที่</label><input type="date" class="fc" id="inputDate" onchange="renderToday()"></div>
       <div class="fg">
         <label>🏷 ตัวคูณ OT</label>
         <div class="mult-grid">
@@ -276,7 +275,7 @@ select.fc option{background:var(--s2);color:var(--text);}
       <button class="btn btn-primary" onclick="addOT()">✓ บันทึกโอที</button>
     </div>
   </div>
-  <div class="divider"><span>รายการวันนี้</span></div>
+  <div class="divider"><span id="addDateLabel">รายการวันนี้</span></div>
   <div id="todayList"></div>
 </div>
 
@@ -313,39 +312,6 @@ select.fc option{background:var(--s2);color:var(--text);}
 
 <!-- SUMMARY -->
 <div class="section" id="sec-summary"><div id="sumContent"></div></div>
-
-<!-- AI -->
-<div class="section" id="sec-ai">
-  <div class="card">
-    <div class="card-label">🔑 เชื่อมต่อ AI</div>
-    <div id="aiKeyStatus" style="text-align:center;padding:12px 0;font-size:13px;color:var(--text3);">กำลังตรวจสอบ...</div>
-    <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="openApiKeyModal()">🔑 ตั้งค่า API Key</button>
-  </div>
-  <div class="card">
-    <div class="card-label">⚡ วิเคราะห์ด่วน</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <button class="btn btn-outline btn-sm" onclick="aiQuick('summary')">📊 สรุปโอทีเดือนนี้</button>
-      <button class="btn btn-outline btn-sm" onclick="aiQuick('trend')">📈 แนวโน้มของฉัน</button>
-      <button class="btn btn-outline btn-sm" onclick="aiQuick('advice')">💡 คำแนะนำ</button>
-      <button class="btn btn-outline btn-sm" onclick="aiQuick('compare')">🔍 เปรียบเทียบรอบ</button>
-    </div>
-  </div>
-  <div class="card" style="padding:0;overflow:hidden;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
-      <div class="card-label" style="margin-bottom:0;">💬 ถามเกี่ยวกับโอทีของคุณ</div>
-    </div>
-    <div class="ai-messages" id="aiMessages">
-      <div class="ai-msg bot">
-        <div class="ai-avatar">🤖</div>
-        <div class="ai-bubble">สวัสดีครับ! ผมเป็น AI ช่วยวิเคราะห์โอทีของคุณ 👋<br><br>ถามผมได้เลยเช่น:<br>• สรุปโอทีเดือนนี้ให้หน่อย<br>• ช่วงไหนที่ทำโอทีมากที่สุด<br>• มีคำแนะนำอะไรบ้าง</div>
-      </div>
-    </div>
-    <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
-      <input type="text" id="aiInput" class="fc" placeholder="พิมพ์คำถาม..." style="flex:1;padding:10px 12px;" onkeydown="if(event.key==='Enter')sendAI()">
-      <button class="btn btn-primary" style="width:48px;flex-shrink:0;padding:10px;" onclick="sendAI()" id="aiSendBtn">➤</button>
-    </div>
-  </div>
-</div>
 
 <!-- SETTINGS -->
 <div class="section" id="sec-settings">
@@ -429,88 +395,68 @@ select.fc option{background:var(--s2);color:var(--text);}
       </div>
       <div class="acc-body" id="ab-data">
         <div class="acc-content">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">ดาวน์โหลดข้อมูลเป็นไฟล์สำรอง</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 Export CSV</button>
             <button class="btn btn-outline btn-sm" onclick="exportJSON()">📦 Export JSON</button>
           </div>
-          <button class="btn btn-danger" style="width:100%;padding:10px;" onclick="clearAll()">🗑 ล้างข้อมูลทั้งหมด</button>
         </div>
       </div>
     </div>
-    <!-- Google Drive -->
+    <!-- Backup & Restore -->
     <div class="acc-item">
-      <div class="acc-row" onclick="toggleAcc('gdrive')">
-        <div class="acc-icon" id="ai-gdrive">☁️</div>
+      <div class="acc-row" onclick="toggleAcc('backup')">
+        <div class="acc-icon" id="ai-backup">💾</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;" id="al-gdrive">Google Drive Sync</div>
-          <div style="font-size:11px;margin-top:1px;" id="ah-gdrive">ยังไม่ได้เชื่อมต่อ</div>
+          <div style="font-size:14px;font-weight:600;" id="al-backup">Backup & Restore</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;" id="ah-backup">สำรองและกู้คืนข้อมูล</div>
         </div>
-        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-gdrive">▾</div>
+        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-backup">▾</div>
       </div>
-      <div class="acc-body" id="ab-gdrive">
+      <div class="acc-body" id="ab-backup">
         <div class="acc-content">
 
-          <!-- NOT LOGGED IN -->
-          <div id="gd-notlogged">
-            <div style="text-align:center;padding:8px 0 16px;">
-              <div style="font-size:36px;margin-bottom:8px;">☁️</div>
-              <div style="font-size:14px;font-weight:600;margin-bottom:4px;">สำรองข้อมูลขึ้น Google Drive</div>
-              <div style="font-size:12px;color:var(--text3);line-height:1.7;">เปลี่ยนเครื่อง หรือล้างเครื่องใหม่<br>ข้อมูลโอทียังอยู่ครบ</div>
-            </div>
-            <button onclick="gdriveSignIn()" style="
-              width:100%;padding:13px 16px;border:none;border-radius:10px;cursor:pointer;
-              background:#fff;color:#3c4043;font-size:14px;font-weight:600;
-              display:flex;align-items:center;justify-content:center;gap:10px;
-              box-shadow:0 2px 8px rgba(0,0,0,.3);transition:box-shadow .2s;
-              font-family:'Noto Sans Thai',sans-serif;
-            " onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.4)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,.3)'">
-              <svg width="20" height="20" viewBox="0 0 48 48">
-                <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
-                <path fill="#34A853" d="M2 24c0-3.1.6-6 1.7-8.7L9.4 20C9.1 21.3 9 22.6 9 24s.1 2.7.4 4L3.7 32.7C2.6 30 2 27.1 2 24z"/>
-                <path fill="#FBBC05" d="M24 46c5.9 0 11.3-2 15.5-5.4l-7.3-5.7C30.2 36.5 27.2 37 24 37c-6.1 0-11.3-3.9-13.2-9.4l-6.9 5.3C7.8 41.7 15.3 46 24 46z"/>
-                <path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-1 2.8-2.9 5.1-5.4 6.6l7.3 5.7C41.4 37.3 44.5 31.1 44.5 24c0-1.3-.2-2.7-.5-4z"/>
-              </svg>
-              เข้าสู่ระบบด้วย Google
+          <!-- Backup -->
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">📤 สำรองข้อมูล</div>
+          <div style="display:grid;gap:8px;margin-bottom:16px;">
+            <button class="btn btn-primary" onclick="backupFull()" style="padding:12px;">
+              💾 Backup ทั้งหมด (JSON)
             </button>
-            <div id="gd-needurl" style="display:none;margin-top:12px;padding:12px;background:rgba(255,146,43,.08);border:1px solid rgba(255,146,43,.3);border-radius:8px;font-size:12px;color:var(--text2);line-height:1.8;">
-              ⚠️ <strong style="color:var(--orange)">ต้องเปิดผ่าน URL (https://) เท่านั้น</strong><br>
-              ไฟล์ .html ในเครื่อง Google ไม่อนุญาต OAuth<br>
-              <strong>วิธีแก้ง่ายๆ: ขึ้น GitHub Pages ฟรี</strong><br>
-              <a href="#" onclick="showGithubGuide();return false;" style="color:var(--blue);text-decoration:underline;">ดูคู่มือทีละขั้นตอน →</a>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 Export CSV</button>
+              <button class="btn btn-outline btn-sm" onclick="exportJSON()">📦 Export JSON</button>
             </div>
           </div>
 
-          <!-- LOGGED IN -->
-          <div id="gd-loggedin" style="display:none;">
-            <div id="gd-userinfo" style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(81,207,102,.07);border:1px solid rgba(81,207,102,.2);border-radius:10px;margin-bottom:12px;">
-              <img id="gd-avatar" src="" style="width:40px;height:40px;border-radius:50%;flex-shrink:0;" onerror="this.style.display='none'">
-              <div style="flex:1;min-width:0;">
-                <div id="gd-name" style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-                <div id="gd-email" style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-              </div>
-              <div style="font-size:18px;">✅</div>
+          <!-- Restore -->
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">📥 กู้คืนข้อมูล</div>
+          <div style="display:grid;gap:8px;margin-bottom:16px;">
+            <label style="
+              width:100%;padding:12px;border:2px dashed var(--border);border-radius:10px;
+              display:flex;align-items:center;justify-content:center;gap:8px;
+              cursor:pointer;font-size:14px;font-weight:700;color:var(--text2);
+              transition:all .2s;font-family:'Noto Sans Thai',sans-serif;
+            " onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+               onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+              📂 เลือกไฟล์ Backup (.json)
+              <input type="file" accept=".json" onchange="restoreFromFile(event)" style="display:none;">
+            </label>
+            <div id="restorePreview" style="display:none;"></div>
+          </div>
+
+          <!-- Auto Backup Info -->
+          <div style="background:rgba(91,124,250,.07);border:1px solid rgba(91,124,250,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);line-height:1.8;">
+            <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">🔄 Auto Backup</div>
+            <div id="autoBackupInfo">กำลังตรวจสอบ...</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+              <button class="btn btn-outline btn-sm" onclick="autoBackupNow()">🔄 Backup ตอนนี้</button>
+              <button class="btn btn-outline btn-sm" onclick="showBackupHistory()">📋 ประวัติ Backup</button>
             </div>
-            <div id="gd-lastSync" style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:12px;"></div>
-            <div style="display:grid;gap:8px;">
-              <button onclick="gdriveSave(this)" style="
-                width:100%;padding:13px;border:none;border-radius:10px;cursor:pointer;
-                background:linear-gradient(135deg,#4285f4,#1a73e8);color:#fff;
-                font-size:14px;font-weight:700;font-family:'Noto Sans Thai',sans-serif;
-                display:flex;align-items:center;justify-content:center;gap:8px;
-                box-shadow:0 4px 14px rgba(66,133,244,.4);transition:all .2s;
-              ">☁️ บันทึกขึ้น Google Drive</button>
-              <button onclick="gdriveLoad(this)" style="
-                width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;cursor:pointer;
-                background:var(--s2);color:var(--text);
-                font-size:14px;font-weight:700;font-family:'Noto Sans Thai',sans-serif;
-                display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;
-              ">📥 โหลดข้อมูลจาก Drive</button>
-              <button onclick="gdriveSignOut()" style="
-                width:100%;padding:10px;border:1px solid rgba(255,107,107,.3);border-radius:8px;cursor:pointer;
-                background:rgba(255,107,107,.1);color:var(--red);
-                font-size:12px;font-weight:700;font-family:'Noto Sans Thai',sans-serif;transition:all .2s;
-              ">🔓 ออกจากระบบ</button>
-            </div>
+          </div>
+
+          <!-- Danger zone -->
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <button class="btn btn-danger" style="width:100%;padding:10px;" onclick="clearAll()">🗑 ล้างข้อมูลทั้งหมด</button>
           </div>
 
         </div>
@@ -548,7 +494,6 @@ select.fc option{background:var(--s2);color:var(--text);}
   <div class="nav-item active" id="nav-add" onclick="switchTab('add')">➕<br>บันทึก</div>
   <div class="nav-item" id="nav-history" onclick="switchTab('history')">📅<br>ปฏิทิน</div>
   <div class="nav-item" id="nav-summary" onclick="switchTab('summary')">📊<br>สรุป</div>
-  <div class="nav-item" id="nav-ai" onclick="switchTab('ai')">🤖<br>AI</div>
   <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">⚙️<br>ตั้งค่า</div>
 </div>
 
@@ -583,20 +528,6 @@ select.fc option{background:var(--s2);color:var(--text);}
   </div>
 </div>
 
-<div class="modal-overlay" id="apiKeyModal" onclick="if(event.target===this)closeApiKeyModal()">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-hd"><div class="modal-title">🔑 ตั้งค่า API Key</div><button class="modal-close" onclick="closeApiKeyModal()">×</button></div>
-    <div class="form-grid">
-      <div style="background:rgba(91,124,250,.08);border:1px solid rgba(91,124,250,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);line-height:1.8;">
-        🔒 Key จะเก็บไว้ในเครื่องของคุณเท่านั้น<br>
-        • <strong style="color:var(--accent)">Claude API</strong> → console.anthropic.com
-      </div>
-      <div class="fg"><label>🤖 Claude API Key</label><input type="password" class="fc" id="claudeKeyInput" placeholder="sk-ant-..."></div>
-      <button class="btn btn-primary" onclick="saveApiKey()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="brandModal" onclick="if(event.target===this)closeBrandModal()">
   <div class="modal" style="max-width:480px;">
     <div class="modal-hd"><div class="modal-title">✏️ แก้ไขโลโก้</div><button class="modal-close" onclick="closeBrandModal()">×</button></div>
@@ -608,6 +539,21 @@ select.fc option{background:var(--s2);color:var(--text);}
       <div class="fg"><label>ชื่อแอป</label><input type="text" class="fc" id="mBrandTitle"></div>
       <div class="fg"><label>คำบรรยาย</label><input type="text" class="fc" id="mBrandSub"></div>
       <button class="btn btn-primary" onclick="saveBrandModal()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backup History Modal -->
+<div class="modal-overlay" id="backupHistoryModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-hd">
+      <div class="modal-title">📋 ประวัติ Auto Backup</div>
+      <button class="modal-close" onclick="document.getElementById('backupHistoryModal').classList.remove('open')">×</button>
+    </div>
+    <div id="backupHistoryList" style="max-height:60vh;overflow-y:auto;"></div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('backupHistoryModal').classList.remove('open')">ปิด</button>
+      <button class="btn btn-danger btn-sm" onclick="clearBackupHistory()">🗑 ล้างประวัติ</button>
     </div>
   </div>
 </div>
@@ -700,7 +646,7 @@ let openAcc=null;
 function toggleAcc(id){
   const wasOpen=openAcc===id;
   // close all
-  ['theme','brand','salary','data','gdrive','about'].forEach(k=>{
+  ['theme','brand','salary','data','backup','about'].forEach(k=>{
     document.getElementById('ab-'+k).classList.remove('open');
     document.getElementById('arr-'+k).style.transform='rotate(0deg)';
     document.getElementById('acc-row-'+k+'')?.classList.remove('open');
@@ -833,10 +779,25 @@ function otItemHtml(r){
 
 // ── TODAY LIST ────────────────────────────────────────────────
 function renderToday(){
-  const today=todayStr();
-  const recs=getData().filter(r=>r.date===today).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const el=document.getElementById('todayList');
-  el.innerHTML=recs.length?recs.map(otItemHtml).join(''):`<div class="empty-state"><div class="empty-icon">📭</div><div style="font-size:13px;">ยังไม่มีรายการวันนี้</div></div>`;
+  const selDate = document.getElementById('inputDate').value || todayStr();
+  const today   = todayStr();
+  const recs    = getData().filter(r=>r.date===selDate).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const el      = document.getElementById('todayList');
+  const lbl     = document.getElementById('addDateLabel');
+
+  // อัปเดต label
+  if(lbl){
+    if(selDate === today){
+      lbl.textContent = 'รายการวันนี้';
+    } else {
+      const d = new Date(selDate);
+      lbl.textContent = `รายการ ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+    }
+  }
+
+  el.innerHTML = recs.length
+    ? recs.map(otItemHtml).join('')
+    : `<div class="empty-state"><div class="empty-icon">📭</div><div style="font-size:13px;">ไม่มีรายการวันที่นี้</div></div>`;
 }
 
 // ── HEADER STATS ─────────────────────────────────────────────
@@ -1025,83 +986,6 @@ function saveEdit(){
   if(calSelDay)renderCal();
 }
 
-// ── API KEY ───────────────────────────────────────────────────
-function updateAiKeyStatus(){
-  const k=getKey(),el=document.getElementById('aiKeyStatus');
-  if(!el)return;
-  if(k){el.innerHTML=`<span style="color:var(--green)">✅ Claude AI เชื่อมต่อแล้ว</span><br><span style="font-size:11px;color:var(--text3)">${k.substring(0,12)}...${k.slice(-4)}</span>`;}
-  else{el.innerHTML=`<span style="color:var(--orange)">⚠️ ยังไม่ได้ใส่ Claude API Key</span><br><span style="font-size:11px;color:var(--text3)">ต้องใส่ API Key ก่อนใช้ AI</span>`;}
-}
-function openApiKeyModal(){document.getElementById('claudeKeyInput').value=getKey();document.getElementById('apiKeyModal').classList.add('open');}
-function closeApiKeyModal(){document.getElementById('apiKeyModal').classList.remove('open');}
-function saveApiKey(){
-  const k=document.getElementById('claudeKeyInput').value.trim();
-  if(k)localStorage.setItem(LS_KEY,k);
-  closeApiKeyModal(); toast('✅ บันทึก API Key แล้ว'); updateAiKeyStatus();
-}
-
-// ── AI CHAT ───────────────────────────────────────────────────
-function getOTContext(){
-  const data=getData(),now=new Date();
-  const mR=data.filter(r=>{const d=new Date(r.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
-  const cyR=data.filter(r=>inCycle(r.date));
-  const r=hourlyRate();
-  return `[ข้อมูลโอทีของผู้ใช้]\nเดือนนี้: ${mR.length} รายการ, ${sumH(mR)} ชม., ${fmtPay(sumP(mR))}\nรอบนี้: ${cyR.length} รายการ, ${sumH(cyR)} ชม., ${fmtPay(sumP(cyR))}\nทั้งหมด: ${data.length} รายการ, ${sumH(data)} ชม., ${fmtPay(sumP(data))}\nฐานเงินเดือน: ${getSalary()||'ไม่ได้ตั้งค่า'} บาท, ค่าจ้าง/ชม.: ${fmtPay(r)}\n5 รายการล่าสุด: ${data.slice(0,5).map(x=>`${x.date} ${x.hours}ชม.×${x.mult}=${fmtPay(x.pay)}`).join(', ')}`;
-}
-
-function addAiMsg(text,isUser){
-  const box=document.getElementById('aiMessages');
-  const div=document.createElement('div');
-  div.className=`ai-msg ${isUser?'user':'bot'}`;
-  div.innerHTML=`
-    ${!isUser?'<div class="ai-avatar">🤖</div>':''}
-    <div class="ai-bubble">${text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
-    ${isUser?'<div class="ai-avatar user">😊</div>':''}
-  `;
-  box.appendChild(div); box.scrollTop=box.scrollHeight;
-}
-function addTyping(){
-  const box=document.getElementById('aiMessages');
-  const div=document.createElement('div'); div.className='ai-msg bot'; div.id='aiTyping';
-  div.innerHTML='<div class="ai-avatar">🤖</div><div class="ai-bubble"><div class="ai-typing"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div></div>';
-  box.appendChild(div); box.scrollTop=box.scrollHeight;
-}
-function removeTyping(){const el=document.getElementById('aiTyping');if(el)el.remove();}
-
-async function sendAI(){
-  const inp=document.getElementById('aiInput');
-  const msg=inp.value.trim(); if(!msg)return;
-  const k=getKey();
-  if(!k){toast('⚠️ ใส่ Claude API Key ก่อน');openApiKeyModal();return;}
-  inp.value='';
-  const btn=document.getElementById('aiSendBtn'); btn.disabled=true; btn.textContent='…';
-  addAiMsg(msg,true); addTyping();
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,
-        system:'คุณคือ AI ผู้ช่วยวิเคราะห์โอที พูดภาษาไทย สั้นกระชับ เป็นมิตร ตอบเป็นข้อๆ ไม่เกิน 5 ประโยค',
-        messages:[{role:'user',content:`${getOTContext()}\n\n${msg}`}]
-      })
-    });
-    const data=await res.json(); removeTyping();
-    addAiMsg(data.content?.[0]?.text||(data.error?'❌ '+data.error.message:'❌ ไม่ได้รับคำตอบ'),false);
-  }catch(e){removeTyping();addAiMsg('❌ เชื่อมต่อไม่ได้ ตรวจสอบ API Key และอินเทอร์เน็ต',false);}
-  btn.disabled=false; btn.textContent='➤';
-}
-
-const QUICK_PROMPTS={
-  summary:'สรุปโอทีเดือนนี้ให้หน่อย บอกว่าทำไปกี่ชม. ได้เงินเท่าไหร่',
-  trend:'วิเคราะห์แนวโน้มโอทีของฉัน ช่วงไหนทำเยอะ ช่วงไหนทำน้อย',
-  advice:'ดูจากข้อมูลโอที มีคำแนะนำอะไรให้ฉันบ้าง',
-  compare:'เปรียบเทียบโอทีรอบนี้กับข้อมูลที่มี'
-};
-function aiQuick(type){
-  document.getElementById('aiInput').value=QUICK_PROMPTS[type]||'';
-  sendAI();
-}
-
 // ── SUMMARY ───────────────────────────────────────────────────
 function renderSummary(){
   const data=getData();
@@ -1198,7 +1082,7 @@ function exportJSON(){
 function clearAll(){if(!confirm('ลบข้อมูลทั้งหมด?'))return;setData([]);toast('🗑 ล้างข้อมูลแล้ว');refreshAll();}
 
 // ── TAB ───────────────────────────────────────────────────────
-const TABS=['add','history','summary','ai','settings'];
+const TABS=['add','history','summary','settings'];
 function switchTab(t){
   TABS.forEach(id=>{
     document.getElementById('sec-'+id).classList.remove('active');
@@ -1211,7 +1095,6 @@ function switchTab(t){
   window.scrollTo({top:0,behavior:'smooth'});
   if(t==='history')renderCal();
   if(t==='summary')renderSummary();
-  if(t==='ai')updateAiKeyStatus();
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
@@ -1235,6 +1118,183 @@ function fireConfetti(){
       el.style.animationDelay=(Math.random()*.3)+'s';
       document.body.appendChild(el); setTimeout(()=>el.remove(),2500);
     },i*30);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  BACKUP & RESTORE
+// ════════════════════════════════════════════════════════════
+const LS_BACKUP_HIST = 'ot_backup_history';
+const MAX_AUTO_BACKUPS = 5; // เก็บประวัติ auto backup สูงสุด 5 ครั้ง
+
+// ── Backup ทั้งหมด (JSON download) ───────────────────────────
+function backupFull(){
+  const payload = buildBackupPayload();
+  const json = JSON.stringify(payload, null, 2);
+  const now = new Date();
+  const fname = `OT_Backup_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.json`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download = fname; a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`💾 Backup สำเร็จ! ${getData().length} รายการ`);
+  saveAutoBackup(payload, 'manual');
+  updateBackupInfo();
+}
+
+function buildBackupPayload(){
+  return {
+    version: '6.1',
+    backupAt: new Date().toISOString(),
+    records: getData(),
+    salary: getSalary(),
+    brand: getBrand(),
+    theme: localStorage.getItem(LS_THEME)||'dark',
+  };
+}
+
+// ── Auto Backup (เก็บใน localStorage) ────────────────────────
+function autoBackupNow(){
+  const payload = buildBackupPayload();
+  saveAutoBackup(payload, 'auto');
+  toast('🔄 Auto Backup สำเร็จ!');
+  updateBackupInfo();
+}
+
+function saveAutoBackup(payload, type){
+  const hist = getBackupHistory();
+  hist.unshift({ type, savedAt: new Date().toISOString(), count: payload.records.length, data: payload });
+  // เก็บแค่ MAX_AUTO_BACKUPS รายการล่าสุด
+  if(hist.length > MAX_AUTO_BACKUPS) hist.splice(MAX_AUTO_BACKUPS);
+  localStorage.setItem(LS_BACKUP_HIST, JSON.stringify(hist));
+}
+
+function getBackupHistory(){
+  try{ return JSON.parse(localStorage.getItem(LS_BACKUP_HIST)||'[]'); }
+  catch{ return []; }
+}
+
+// ── Restore จากไฟล์ ───────────────────────────────────────────
+function restoreFromFile(event){
+  const file = event.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const payload = JSON.parse(e.target.result);
+      showRestorePreview(payload, 'file');
+    }catch(err){
+      toast('❌ ไฟล์ไม่ถูกต้อง ต้องเป็น JSON เท่านั้น');
+    }
+  };
+  reader.readAsText(file);
+  // reset input
+  event.target.value = '';
+}
+
+function showRestorePreview(payload, source){
+  const cnt = payload.records?.length || 0;
+  const at = payload.backupAt || payload.savedAt || '?';
+  const atStr = at !== '?' ? new Date(at).toLocaleString('th-TH') : '?';
+  const el = document.getElementById('restorePreview');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="background:rgba(81,207,102,.08);border:1px solid rgba(81,207,102,.25);border-radius:10px;padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px;">✅ พบข้อมูล Backup</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2;">
+        <div>📦 รายการโอที: <strong style="color:var(--text)">${cnt} รายการ</strong></div>
+        <div>📅 บันทึกเมื่อ: <strong style="color:var(--text)">${atStr}</strong></div>
+        ${payload.salary ? `<div>💰 ฐานเงินเดือน: <strong style="color:var(--text)">${(+payload.salary).toLocaleString('th-TH')} ฿</strong></div>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('restorePreview').style.display='none'">ยกเลิก</button>
+        <button class="btn btn-primary btn-sm" onclick="applyRestore(${JSON.stringify(JSON.stringify(payload))})">📥 Restore เลย</button>
+      </div>
+    </div>`;
+}
+
+function applyRestore(payloadStr){
+  const payload = JSON.parse(payloadStr);
+  const cnt = payload.records?.length || 0;
+  if(!confirm(`Restore ข้อมูล?\n\n${cnt} รายการ\n\n⚠️ ข้อมูลปัจจุบันจะถูกแทนที่`)) return;
+  // backup ก่อน restore
+  saveAutoBackup(buildBackupPayload(), 'before-restore');
+  // apply
+  if(payload.records) setData(payload.records);
+  if(payload.salary)  localStorage.setItem(LS_SAL, String(payload.salary));
+  if(payload.brand)   { localStorage.setItem(LS_BRAND, JSON.stringify(payload.brand)); applyBrand(payload.brand); }
+  if(payload.theme)   applyTheme(payload.theme);
+  // update salary UI
+  const sal = getSalary();
+  if(sal>0){
+    document.getElementById('salaryInput').value = sal;
+    document.getElementById('ah-salary').textContent = sal.toLocaleString('th-TH')+' ฿';
+    document.getElementById('ah-salary').style.color = 'var(--green)';
+    previewRate();
+  }
+  document.getElementById('restorePreview').style.display = 'none';
+  refreshAll(); renderCal();
+  toast(`✅ Restore สำเร็จ! ${cnt} รายการ`);
+  updateBackupInfo();
+}
+
+// ── Backup History ────────────────────────────────────────────
+function showBackupHistory(){
+  const hist = getBackupHistory();
+  const el = document.getElementById('backupHistoryList');
+  if(!hist.length){
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">ยังไม่มีประวัติ Backup</div>';
+  } else {
+    const typeLabel = { manual:'💾 Manual', auto:'🔄 Auto', 'before-restore':'🛡 ก่อน Restore' };
+    el.innerHTML = hist.map((h,i) => `
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:2px;">${typeLabel[h.type]||h.type}</div>
+          <div style="font-size:11px;color:var(--text3);">${new Date(h.savedAt).toLocaleString('th-TH')} · ${h.count} รายการ</div>
+        </div>
+        <button onclick="restoreFromHistory(${i})" style="
+          padding:6px 10px;border:1px solid var(--accent);border-radius:6px;
+          background:rgba(91,124,250,.15);color:var(--accent);font-size:11px;
+          font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans Thai',sans-serif;
+        ">📥 Restore</button>
+      </div>`).join('');
+  }
+  document.getElementById('backupHistoryModal').classList.add('open');
+}
+
+function restoreFromHistory(index){
+  const hist = getBackupHistory();
+  const h = hist[index]; if(!h) return;
+  document.getElementById('backupHistoryModal').classList.remove('open');
+  showRestorePreview(h.data, 'history');
+  // scroll to preview
+  setTimeout(()=>{
+    const el = document.getElementById('restorePreview');
+    if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },300);
+}
+
+function clearBackupHistory(){
+  if(!confirm('ล้างประวัติ Backup ทั้งหมด?')) return;
+  localStorage.removeItem(LS_BACKUP_HIST);
+  document.getElementById('backupHistoryModal').classList.remove('open');
+  toast('🗑 ล้างประวัติ Backup แล้ว');
+  updateBackupInfo();
+}
+
+// ── Update backup info display ────────────────────────────────
+function updateBackupInfo(){
+  const hist = getBackupHistory();
+  const el = document.getElementById('autoBackupInfo');
+  if(!el) return;
+  if(!hist.length){
+    el.innerHTML = '<span style="color:var(--text3)">ยังไม่มี Backup</span>';
+  } else {
+    const last = hist[0];
+    const typeLabel = { manual:'💾 Manual', auto:'🔄 Auto', 'before-restore':'🛡 ก่อน Restore' };
+    el.innerHTML = `Backup ล่าสุด: <strong style="color:var(--text)">${typeLabel[last.type]||last.type}</strong><br>
+      เมื่อ: <strong style="color:var(--green)">${new Date(last.savedAt).toLocaleString('th-TH')}</strong><br>
+      จำนวน: <strong style="color:var(--text)">${last.count} รายการ</strong> · มีทั้งหมด <strong style="color:var(--accent)">${hist.length}/${MAX_AUTO_BACKUPS}</strong> ชุด`;
+    document.getElementById('ah-backup').textContent = `Backup ล่าสุด: ${new Date(last.savedAt).toLocaleDateString('th-TH')}`;
   }
 }
 
@@ -1265,366 +1325,16 @@ window.addEventListener('DOMContentLoaded',()=>{
     previewRate();
   }
 
-  // Google Drive
-  gdriveInit();
-
   // Calendar
   renderCal();
   refreshAll();
-  updateAiKeyStatus();
+  updateBackupInfo();
+  // Auto backup เมื่อเปิดแอป (ถ้ามีข้อมูล)
+  if(getData().length > 0) saveAutoBackup(buildBackupPayload(), 'auto');
 });
 
-// ════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE SYNC  — ใช้ Google Identity Services (GIS)
-//  Client ID นี้ลงทะเบียนสำหรับ GitHub Pages ของแอปนี้
-//  ผู้ใช้แค่กด Login → เลือกบัญชี → ใช้งานได้เลย
-// ════════════════════════════════════════════════════════════
-
-// ⚠️  IMPORTANT: เปลี่ยน CLIENT_ID นี้เป็นของคุณเองหลังจาก
-//     อัปโหลดขึ้น GitHub Pages แล้ว (ดูคู่มือในไฟล์ README)
-//     หรือใส่ Client ID ที่ช่อง input ด้านล่างได้เลย
-const GD_CLIENT_ID_KEY = 'ot_gd_client_id';
-const GDRIVE_FILE_NAME = 'OT-TimeSheet-data.json';
-// scope: appDataFolder = เก็บใน hidden folder ของแอป ไม่โผล่ใน My Drive
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-
-let gdTokenClient = null;
-let gdAccessToken = '';
-let gdFileId = '';
-let gdUserInfo = null;
-
-// ── รับ Client ID (จาก localStorage หรือ input) ───────────
-function getClientId(){
-  return localStorage.getItem(GD_CLIENT_ID_KEY)||'';
-}
-
-// ── Load GIS script ────────────────────────────────────────
-function loadGIS(cb){
-  if(window.google?.accounts){ cb(); return; }
-  const s=document.createElement('script');
-  s.src='https://accounts.google.com/gsi/client';
-  s.onload=cb; s.onerror=()=>{ toast('❌ โหลด Google Script ไม่ได้ ตรวจสอบอินเทอร์เน็ต'); };
-  document.head.appendChild(s);
-}
-
-// ── Init GIS token client ──────────────────────────────────
-function initGIS(cid){
-  try{
-    gdTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: cid,
-      scope: GDRIVE_SCOPE,
-      callback: async(resp)=>{
-        if(resp.error){ toast('❌ Login ล้มเหลว: '+resp.error); return; }
-        gdAccessToken = resp.access_token;
-        localStorage.setItem('ot_gd_token', gdAccessToken);
-        await fetchUserInfo();
-        gdriveShowLoggedIn();
-        toast('✅ เชื่อมต่อ Google Drive แล้ว!');
-      }
-    });
-  }catch(e){ console.warn('GIS init fail',e); }
-}
-
-// ── Fetch user profile ─────────────────────────────────────
-async function fetchUserInfo(){
-  try{
-    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
-      headers:{ Authorization:`Bearer ${gdAccessToken}` }
-    });
-    gdUserInfo = await r.json();
-    const saved = { name:gdUserInfo.name, email:gdUserInfo.email, picture:gdUserInfo.picture };
-    localStorage.setItem('ot_gd_user', JSON.stringify(saved));
-  }catch(e){ console.warn('userinfo fail',e); }
-}
-
-// ── กด Sign In ─────────────────────────────────────────────
-function gdriveSignIn(){
-  // ตรวจว่าเปิดผ่าน https หรือ localhost เท่านั้น
-  const proto = location.protocol;
-  if(proto !== 'https:' && location.hostname !== 'localhost'){
-    document.getElementById('gd-needurl').style.display='block';
-    return;
-  }
-  const cid = getClientId();
-  if(!cid){
-    // แสดง popup ให้ใส่ Client ID ก่อน
-    document.getElementById('gdClientIdModal').classList.add('open');
-    return;
-  }
-  loadGIS(()=>{ initGIS(cid); gdTokenClient.requestAccessToken({prompt:'select_account'}); });
-}
-
-// ── Sign Out ───────────────────────────────────────────────
-function gdriveSignOut(){
-  if(gdAccessToken) try{ google.accounts.oauth2.revoke(gdAccessToken); }catch(e){}
-  gdAccessToken=''; gdFileId=''; gdUserInfo=null;
-  localStorage.removeItem('ot_gd_token');
-  localStorage.removeItem('ot_gd_user');
-  gdriveShowNotLoggedIn();
-  toast('🔓 ออกจากระบบแล้ว');
-}
-
-// ── แสดง UI: Not logged in ─────────────────────────────────
-function gdriveShowNotLoggedIn(){
-  document.getElementById('gd-notlogged').style.display='block';
-  document.getElementById('gd-loggedin').style.display='none';
-  document.getElementById('ah-gdrive').textContent='ยังไม่ได้เชื่อมต่อ';
-  document.getElementById('ah-gdrive').style.color='var(--text3)';
-}
-
-// ── แสดง UI: Logged in ────────────────────────────────────
-function gdriveShowLoggedIn(){
-  document.getElementById('gd-notlogged').style.display='none';
-  document.getElementById('gd-loggedin').style.display='block';
-  // User info
-  const u = gdUserInfo || JSON.parse(localStorage.getItem('ot_gd_user')||'{}');
-  if(u.name){ document.getElementById('gd-name').textContent=u.name; }
-  if(u.email){ document.getElementById('gd-email').textContent=u.email; }
-  if(u.picture){ document.getElementById('gd-avatar').src=u.picture; }
-  document.getElementById('ah-gdrive').textContent='เชื่อมต่อแล้ว ✓';
-  document.getElementById('ah-gdrive').style.color='var(--green)';
-  // Last sync
-  const ls = localStorage.getItem('ot_gd_lastsync');
-  if(ls) document.getElementById('gd-lastSync').textContent='ซิงค์ล่าสุด: '+ls;
-}
-
-// ── Init on load ───────────────────────────────────────────
-function gdriveInit(){
-  const savedUser = localStorage.getItem('ot_gd_user');
-  const savedTok  = localStorage.getItem('ot_gd_token');
-  const cid = getClientId();
-  if(savedUser && savedTok && cid){
-    gdAccessToken = savedTok;
-    gdUserInfo = JSON.parse(savedUser);
-    // Init GIS silently so we can refresh token when needed
-    loadGIS(()=>{ initGIS(cid); });
-    gdriveShowLoggedIn();
-  } else {
-    gdriveShowNotLoggedIn();
-  }
-}
-
-// ── Ensure valid token (refresh if needed) ─────────────────
-async function ensureGDToken(){
-  if(gdAccessToken) return true;
-  const t = localStorage.getItem('ot_gd_token');
-  if(t){ gdAccessToken=t; return true; }
-  return false;
-}
-
-// ── Find file in appDataFolder ─────────────────────────────
-async function gdFindFile(){
-  if(gdFileId) return gdFileId;
-  const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${GDRIVE_FILE_NAME}'&fields=files(id,modifiedTime)`,
-    { headers:{ Authorization:`Bearer ${gdAccessToken}` } }
-  );
-  const d = await r.json();
-  if(d.error) throw new Error(d.error.message);
-  if(d.files?.length){ gdFileId=d.files[0].id; return gdFileId; }
-  return null;
-}
-
-// ── SAVE ───────────────────────────────────────────────────
-async function gdriveSave(btn){
-  if(!(await ensureGDToken())){
-    toast('⚠️ กรุณา Login ก่อน'); gdriveSignIn(); return;
-  }
-  const orig = btn.textContent;
-  btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
-  try{
-    const payload = JSON.stringify({
-      records: getData(), salary: getSalary(), brand: getBrand(),
-      savedAt: new Date().toISOString(), version:'6.1'
-    },null,2);
-
-    const existId = await gdFindFile();
-    let res;
-    if(existId){
-      res = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${existId}?uploadType=media`,
-        { method:'PATCH', headers:{ Authorization:`Bearer ${gdAccessToken}`, 'Content-Type':'application/json'}, body:payload }
-      );
-    }else{
-      const bnd='otts_bnd_001';
-      const meta=JSON.stringify({name:GDRIVE_FILE_NAME,parents:['appDataFolder']});
-      const body=`--${bnd}\r\nContent-Type:application/json\r\n\r\n${meta}\r\n--${bnd}\r\nContent-Type:application/json\r\n\r\n${payload}\r\n--${bnd}--`;
-      res = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-        { method:'POST', headers:{ Authorization:`Bearer ${gdAccessToken}`, 'Content-Type':`multipart/related; boundary=${bnd}`}, body }
-      );
-      const cr=await res.clone().json(); if(cr.id) gdFileId=cr.id;
-    }
-    if(res.ok){
-      const now=new Date().toLocaleString('th-TH');
-      localStorage.setItem('ot_gd_lastsync', now);
-      document.getElementById('gd-lastSync').textContent='ซิงค์ล่าสุด: '+now;
-      toast('☁️ บันทึกขึ้น Drive แล้ว! ('+getData().length+' รายการ)');
-    }else{
-      const e=await res.json();
-      if(e.error?.code===401){ gdAccessToken=''; loadGIS(()=>{ initGIS(getClientId()); gdTokenClient.requestAccessToken(); }); return; }
-      throw new Error(e.error?.message||'Save failed');
-    }
-  }catch(e){ toast('❌ บันทึกไม่สำเร็จ: '+e.message); }
-  finally{ btn.disabled=false; btn.textContent=orig; }
-}
-
-// ── LOAD ───────────────────────────────────────────────────
-async function gdriveLoad(btn){
-  if(!(await ensureGDToken())){
-    toast('⚠️ กรุณา Login ก่อน'); gdriveSignIn(); return;
-  }
-  const orig=btn.textContent;
-  btn.disabled=true; btn.textContent='⏳ กำลังโหลด...';
-  try{
-    const fid=await gdFindFile();
-    if(!fid){ toast('⚠️ ไม่พบข้อมูลบน Drive (ยังไม่เคย Save)'); return; }
-    const r=await fetch(`https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
-      { headers:{ Authorization:`Bearer ${gdAccessToken}` } });
-    if(!r.ok){
-      const e=await r.json();
-      if(e.error?.code===401){ gdAccessToken=''; loadGIS(()=>{ initGIS(getClientId()); gdTokenClient.requestAccessToken(); }); return; }
-      throw new Error(e.error?.message||'Load failed');
-    }
-    const p=await r.json();
-    const cnt=p.records?.length||0;
-    const at=p.savedAt?new Date(p.savedAt).toLocaleString('th-TH'):'?';
-    if(!confirm(`โหลดข้อมูลจาก Google Drive?\n\nบันทึกเมื่อ: ${at}\nจำนวน: ${cnt} รายการ\n\n⚠️ ข้อมูลในเครื่องจะถูกแทนที่`)) return;
-    if(p.records) setData(p.records);
-    if(p.salary)  localStorage.setItem(LS_SAL,String(p.salary));
-    if(p.brand){  localStorage.setItem(LS_BRAND,JSON.stringify(p.brand)); applyBrand(p.brand); }
-    refreshAll(); renderCal();
-    const sal=getSalary();
-    if(sal>0){
-      document.getElementById('salaryInput').value=sal;
-      document.getElementById('ah-salary').textContent=sal.toLocaleString('th-TH')+' ฿';
-      document.getElementById('ah-salary').style.color='var(--green)';
-      previewRate();
-    }
-    const now=new Date().toLocaleString('th-TH');
-    localStorage.setItem('ot_gd_lastsync',now);
-    document.getElementById('gd-lastSync').textContent='โหลดล่าสุด: '+now;
-    toast(`📥 โหลดสำเร็จ! ${cnt} รายการ`);
-  }catch(e){ toast('❌ โหลดไม่สำเร็จ: '+e.message); }
-  finally{ btn.disabled=false; btn.textContent=orig; }
-}
-
-// ── GitHub Pages Guide Modal ───────────────────────────────
-function showGithubGuide(){
-  document.getElementById('githubGuideModal').classList.add('open');
-}
-
-// ── Save custom Client ID ──────────────────────────────────
-function saveCustomClientId(){
-  const cid=document.getElementById('customClientId').value.trim();
-  if(!cid){ toast('⚠️ ใส่ Client ID ก่อน'); return; }
-  localStorage.setItem(GD_CLIENT_ID_KEY,cid);
-  document.getElementById('gdClientIdModal').classList.remove('open');
-  toast('✅ บันทึก Client ID แล้ว');
-  loadGIS(()=>{ initGIS(cid); gdTokenClient.requestAccessToken({prompt:'select_account'}); });
-}
 </script>
 
-<!-- CLIENT ID MODAL -->
-<div class="modal-overlay" id="gdClientIdModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-hd">
-      <div class="modal-title">🔑 ตั้งค่า Google Client ID</div>
-      <button class="modal-close" onclick="document.getElementById('gdClientIdModal').classList.remove('open')">×</button>
-    </div>
-    <div style="background:rgba(66,133,244,.08);border:1px solid rgba(66,133,244,.25);border-radius:10px;padding:14px;font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:14px;">
-      <strong style="color:#4285f4;font-size:13px;">ทำครั้งเดียว ใช้ได้ตลอด</strong><br>
-      <strong>1.</strong> ไปที่ <a href="https://console.cloud.google.com" target="_blank" style="color:#4285f4">console.cloud.google.com</a><br>
-      <strong>2.</strong> สร้างโปรเจกต์ → เปิด <strong>Google Drive API</strong><br>
-      <strong>3.</strong> Credentials → Create → <strong>OAuth 2.0 Client ID</strong><br>
-      <strong>4.</strong> Type: <strong>Web application</strong><br>
-      <strong>5.</strong> Authorized JS origins: ใส่ URL ของ GitHub Pages คุณ<br>
-      &nbsp;&nbsp;&nbsp;เช่น <code style="background:var(--s3);padding:1px 6px;border-radius:4px;">https://username.github.io</code><br>
-      <strong>6.</strong> Copy Client ID มาใส่ด้านล่าง
-    </div>
-    <div class="form-grid">
-      <div class="fg">
-        <label>Google OAuth Client ID</label>
-        <input type="text" class="fc" id="customClientId" placeholder="xxxxxxx.apps.googleusercontent.com">
-      </div>
-      <button class="btn btn-primary" onclick="saveCustomClientId()" style="background:linear-gradient(135deg,#4285f4,#1a73e8);">
-        ✅ บันทึกและเข้าสู่ระบบ
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- GITHUB GUIDE MODAL -->
-<div class="modal-overlay" id="githubGuideModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-hd">
-      <div class="modal-title">📘 วิธีขึ้น GitHub Pages</div>
-      <button class="modal-close" onclick="document.getElementById('githubGuideModal').classList.remove('open')">×</button>
-    </div>
-    <div style="font-size:13px;color:var(--text2);line-height:2.1;">
-      <div style="background:rgba(81,207,102,.08);border:1px solid rgba(81,207,102,.25);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;">
-        ✅ <strong>ฟรี 100%</strong> — ไม่เสียเงิน ไม่ต้องติดตั้งอะไร<br>
-        🌐 ได้ URL เช่น <code style="background:var(--s3);padding:1px 6px;border-radius:4px;">https://ชื่อคุณ.github.io/ot</code>
-      </div>
-      <div style="display:grid;gap:10px;">
-        <div style="background:var(--s2);border-radius:8px;padding:12px;">
-          <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">① สมัคร GitHub (ถ้ายังไม่มี)</div>
-          ไปที่ <a href="https://github.com/signup" target="_blank" style="color:var(--blue)">github.com/signup</a> → สมัครฟรี
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:12px;">
-          <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">② สร้าง Repository ใหม่</div>
-          กด <strong>New</strong> → ชื่อ <code style="background:var(--s3);padding:1px 6px;border-radius:4px;">ot</code> → Public → Create
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:12px;">
-          <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">③ อัปโหลดไฟล์</div>
-          กด <strong>uploading an existing file</strong> → ลาก <code style="background:var(--s3);padding:1px 6px;border-radius:4px;">OT-TimeSheet.html</code> มาวาง → <strong>rename เป็น index.html</strong> → Commit
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:12px;">
-          <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">④ เปิด GitHub Pages</div>
-          Settings → Pages → Source: <strong>main branch</strong> → Save<br>
-          รอ 1-2 นาที → ได้ URL <code style="background:var(--s3);padding:1px 6px;border-radius:4px;">https://ชื่อ.github.io/ot</code>
-        </div>
-        <div style="background:var(--s2);border-radius:8px;padding:12px;">
-          <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">⑤ ตั้งค่า Google Client ID</div>
-          ทำตามขั้นตอนในหน้า "ตั้งค่า Google Client ID"<br>
-          ใส่ URL GitHub Pages ของคุณใน Authorized JS origins
-        </div>
-      </div>
-      <button onclick="document.getElementById('githubGuideModal').classList.remove('open')" style="width:100%;margin-top:14px;padding:12px;border:none;border-radius:8px;background:var(--s2);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;">ปิด</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- file:// Warning Banner -->
-<div id="pwaFileBanner" style="
-  display:none; position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
-  width:calc(100% - 28px); max-width:452px; z-index:301;
-  background:linear-gradient(135deg,#78350f,#92400e);
-  border-radius:16px; padding:14px 16px;
-  box-shadow:0 8px 32px rgba(0,0,0,.5);
-  animation:fadeInUp .4s ease;
-">
-  <div style="display:flex;align-items:flex-start;gap:12px;">
-    <div style="font-size:26px;flex-shrink:0;margin-top:2px;">📱</div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;">อยากติดตั้งเป็นแอปมือถือ?</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.8);line-height:1.6;">
-        ต้องอัปโหลดขึ้น <strong>GitHub Pages</strong> ก่อน<br>
-        แล้วเปิดด้วย Chrome → กด "เพิ่มลงหน้าจอหลัก"
-      </div>
-      <button onclick="showGithubGuide();pwaFileBannerDismiss();" style="
-        margin-top:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.4);
-        border-radius:6px;background:rgba(255,255,255,.15);color:#fff;
-        font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;
-      ">ดูวิธีขึ้น GitHub Pages →</button>
-    </div>
-    <button onclick="pwaFileBannerDismiss()" style="
-      background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;
-      cursor:pointer;padding:0;line-height:1;flex-shrink:0;
-    ">×</button>
-  </div>
-</div>
 
 <!-- PWA Install Banner -->
 <div id="pwaInstallBanner" style="
