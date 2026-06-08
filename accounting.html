@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ระบบสำนักงานบัญชี</title>
+<meta name="application-name" content="AccOffice">
+<meta name="description" content="ระบบจัดการสำนักงานบัญชี">
+<meta name="theme-color" content="#1e3a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AccOffice">
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22AccOffice%22,%22short_name%22:%22AccOffice%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%220f1419%22,%22theme_color%22:%221e3a8a%22,%22orientation%22:%22portrait%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20512%20512'%3E%3Crect%20width='512'%20height='512'%20rx='80'%20fill='%231e3a8a'/%3E%3Cpath%20d='M160%20180h192v152H160z'%20fill='none'%20stroke='%235b7cfa'%20stroke-width='20'/%3E%3Cline%20x1='192'%20y1='230'%20x2='320'%20y2='230'%20stroke='%23fff'%20stroke-width='16'/%3E%3Cline%20x1='192'%20y1='270'%20x2='290'%20y2='270'%20stroke='%23fff'%20stroke-width='16'/%3E%3Cline%20x1='192'%20y1='310'%20x2='260'%20y2='310'%20stroke='%235b7cfa'%20stroke-width='16'/%3E%3C/svg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%20maskable%22}]}">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0f1419;--surface:#1a1f2e;--s2:#242d3d;--s3:#2d3749;--border:#3a4556;
+  --accent:#5b7cfa;--accent2:#7c3aed;--header:linear-gradient(135deg,#1e3a8a,#3730a3);
+  --text:#e9ecef;--text2:#adb5bd;--text3:#6c757d;
+  --green:#51cf66;--orange:#ff922b;--red:#ff6b6b;--blue:#4dabf7;--yellow:#ffd43b;--teal:#20c997;
+}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:rgba(91,124,250,.3);border-radius:2px}
+.app{max-width:480px;margin:0 auto;padding-bottom:80px;}
+input,select,button,textarea{font-family:'Noto Sans Thai',sans-serif;}
+
+/* FORM CONTROLS */
+.fc{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;transition:all .25s;width:100%;outline:none;}
+.fc:focus{border-color:var(--accent);background:var(--s3);box-shadow:0 0 0 3px rgba(91,124,250,.2);}
+select.fc option{background:var(--s2);color:var(--text);}
+textarea.fc{resize:vertical;min-height:70px;}
+
+/* ANIMATIONS */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}60%{transform:translateY(-3px)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes popIn{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* HEADER */
+.header{background:var(--header);padding:12px 14px 10px;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.header-icon{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.stat-box{background:rgba(255,255,255,.1);border-radius:8px;padding:6px 4px;text-align:center;border:1px solid rgba(255,255,255,.08);}
+.stat-val{font-size:14px;font-weight:700;font-family:'Space Mono',monospace;color:#fff;line-height:1.2;}
+.stat-val.green{color:#6ee7b7;}.stat-val.orange{color:#fcd34d;}.stat-val.red{color:#fca5a5;}.stat-val.blue{color:#93c5fd;}
+.stat-lbl{font-size:9px;color:rgba(255,255,255,.65);margin-top:1px;}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:90px;z-index:90;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.tab{flex:1;padding:9px 2px;border:none;background:none;color:var(--text3);font-size:10px;font-weight:600;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;transition:all .2s;position:relative;}
+.tab.active{color:var(--accent);}
+.tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);border-radius:2px 2px 0 0;}
+
+/* SECTIONS */
+.section{display:none;padding:12px;animation:fadeIn .25s ease;}
+.section.active{display:block;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,0,0,.4);}
+.card-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.card-label::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;flex-shrink:0;}
+
+/* FORM */
+.form-grid{display:grid;gap:10px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg label{font-size:12px;font-weight:600;color:var(--text2);}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* BUTTONS */
+.btn{border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Noto Sans Thai',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;width:100%;box-shadow:0 4px 14px rgba(91,124,250,.35);}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(91,124,250,.5);}
+.btn-outline{background:var(--s2);border:1px solid var(--border);color:var(--text2);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.3);}
+.btn-success{background:rgba(81,207,102,.15);color:var(--green);border:1px solid rgba(81,207,102,.3);}
+.btn-sm{padding:7px 11px;font-size:11px;border-radius:6px;}
+.btn-icon{width:34px;height:34px;padding:0;border-radius:8px;font-size:15px;}
+.fab{position:fixed;bottom:86px;right:calc(50% - 230px);width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 6px 20px rgba(91,124,250,.5);z-index:150;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.fab:hover{transform:scale(1.1);}
+@media(max-width:480px){.fab{right:16px;}}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);padding:8px 0 14px;display:flex;z-index:200;}
+.nav-item{flex:1;text-align:center;font-size:10px;color:var(--text3);cursor:pointer;padding:5px 2px;transition:all .2s;font-weight:600;font-family:'Noto Sans Thai',sans-serif;}
+.nav-item.active{color:var(--accent);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:18px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);border-top:1px solid var(--border);}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{background:var(--s2);border:none;font-size:18px;cursor:pointer;color:var(--text3);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--s2);border:1px solid var(--border);padding:10px 20px;border-radius:24px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4);transition:transform .35s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;pointer-events:none;backdrop-filter:blur(10px);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* SEARCH BAR */
+.search-wrap{position:relative;margin-bottom:10px;}
+.search-wrap input{padding-left:36px;}
+.search-wrap::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;}
+
+/* STATUS CHIPS */
+.chip{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.chip-blue{background:rgba(91,124,250,.2);color:var(--accent);}
+.chip-green{background:rgba(81,207,102,.2);color:var(--green);}
+.chip-orange{background:rgba(255,146,43,.2);color:var(--orange);}
+.chip-red{background:rgba(255,107,107,.2);color:var(--red);}
+.chip-gray{background:rgba(108,117,125,.2);color:var(--text3);}
+.chip-teal{background:rgba(32,201,151,.2);color:var(--teal);}
+
+/* CLIENT/TASK ITEMS */
+.item-row{display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px;animation:fadeInUp .25s ease;cursor:pointer;transition:all .15s;}
+.item-row:hover{border-color:var(--accent);background:var(--s3);}
+.item-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.item-body{flex:1;min-width:0;}
+.item-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.item-meta{font-size:11px;color:var(--text2);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.item-actions{display:flex;gap:5px;flex-shrink:0;align-items:center;}
+
+/* FILTER TABS */
+.filter-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;}
+.filter-tabs::-webkit-scrollbar{display:none;}
+.ftab{padding:5px 12px;border-radius:16px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--s2);color:var(--text3);white-space:nowrap;transition:all .15s;font-family:'Noto Sans Thai',sans-serif;}
+.ftab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* PROGRESS BAR */
+.prog-wrap{height:5px;background:var(--s2);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .8s;}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:8px;margin:10px 0 8px;}
+.divider span{font-size:10px;color:var(--text3);white-space:nowrap;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* DASHBOARD STAT GRID */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.dash-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.dash-val{font-size:22px;font-weight:700;font-family:'Space Mono',monospace;line-height:1.2;}
+.dash-lbl{font-size:10px;color:var(--text3);margin-top:3px;}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:30px 20px;color:var(--text3);animation:fadeIn .4s ease;}
+.empty-icon{font-size:36px;margin-bottom:8px;opacity:.5;display:inline-block;animation:bounce 2.5s ease infinite;}
+
+/* SETTINGS ACCORDION */
+.acc-item{border-bottom:1px solid var(--border);}
+.acc-item:last-child{border-bottom:none;}
+.acc-row{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;transition:background .15s;}
+.acc-row:hover{background:var(--s2);}
+.acc-row.open{background:var(--s2);}
+.acc-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;background:var(--s2);border:1px solid var(--border);flex-shrink:0;}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+.acc-body.open{max-height:800px;}
+.acc-content{padding:12px 14px 14px;background:var(--s2);border-bottom:1px solid var(--border);}
+
+/* THEME GRID */
+.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+
+/* FINANCE */
+.fin-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.fin-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;}
+.fin-val{font-size:13px;font-weight:700;font-family:'Space Mono',monospace;line-height:1.2;}
+.fin-lbl{font-size:9px;color:var(--text3);margin-top:2px;}
+.fin-item{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 11px;margin-bottom:7px;animation:fadeInUp .25s ease;}
+.fin-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.month-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.month-nav-btn{width:32px;height:32px;border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:7px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header" id="mainHeader">
+  <div class="header-top">
+    <div class="header-icon" id="headerIcon">🏢</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="headerTitle">ระบบสำนักงานบัญชี</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7);" id="headerSub">Accounting Office Management</div>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-box"><div class="stat-val blue" id="hClients">0</div><div class="stat-lbl">ลูกค้า</div></div>
+    <div class="stat-box"><div class="stat-val orange" id="hPending">0</div><div class="stat-lbl">งานค้าง</div></div>
+    <div class="stat-box"><div class="stat-val red" id="hOverdue">0</div><div class="stat-lbl">เกินกำหนด</div></div>
+    <div class="stat-box"><div class="stat-val green" id="hIncome">0</div><div class="stat-lbl">รายได้/ด.</div></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('dashboard')">🏠<br>หน้าหลัก</button>
+  <button class="tab" onclick="switchTab('clients')">👥<br>ลูกค้า</button>
+  <button class="tab" onclick="switchTab('tasks')">📋<br>งาน</button>
+  <button class="tab" onclick="switchTab('finance')">💰<br>การเงิน</button>
+  <button class="tab" onclick="switchTab('settings')">⚙️<br>ตั้งค่า</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="section active" id="sec-dashboard">
+  <div class="dash-grid">
+    <div class="dash-card"><div class="dash-val blue" id="dClients">0</div><div class="dash-lbl">ลูกค้าทั้งหมด</div></div>
+    <div class="dash-card"><div class="dash-val orange" id="dPending">0</div><div class="dash-lbl">งานค้างอยู่</div></div>
+    <div class="dash-card"><div class="dash-val red" id="dOverdue">0</div><div class="dash-lbl">งานเกินกำหนด</div></div>
+    <div class="dash-card"><div class="dash-val green" id="dDone">0</div><div class="dash-lbl">เสร็จเดือนนี้</div></div>
+  </div>
+
+  <!-- Monthly income/expense summary -->
+  <div class="card" style="padding:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card-label" style="margin-bottom:0;">รายรับ-รายจ่ายเดือนนี้</div>
+    </div>
+    <div class="fin-summary">
+      <div class="fin-box"><div class="fin-val green" id="dMIncome">฿0</div><div class="fin-lbl">รายรับ</div></div>
+      <div class="fin-box"><div class="fin-val red" id="dMExpense">฿0</div><div class="fin-lbl">รายจ่าย</div></div>
+      <div class="fin-box"><div class="fin-val" id="dMProfit">฿0</div><div class="fin-lbl">กำไร</div></div>
+    </div>
+  </div>
+
+  <!-- Urgent/overdue tasks -->
+  <div class="card-label" style="padding:0 2px;margin-bottom:8px;">งานเร่งด่วน / เกินกำหนด</div>
+  <div id="dashUrgent">
+    <div class="empty-state"><div class="empty-icon">✅</div><div style="font-size:12px;">ไม่มีงานเร่งด่วน</div></div>
+  </div>
+
+  <!-- Upcoming deadlines (next 7 days) -->
+  <div class="card-label" style="padding:0 2px;margin:10px 0 8px;">กำหนดส่งใน 7 วัน</div>
+  <div id="dashUpcoming">
+    <div class="empty-state"><div class="empty-icon">📅</div><div style="font-size:12px;">ไม่มีงานที่กำลังจะถึงกำหนด</div></div>
+  </div>
+</div>
+
+<!-- CLIENTS -->
+<div class="section" id="sec-clients">
+  <div class="search-wrap">
+    <input type="text" class="fc" id="clientSearch" placeholder="ค้นหาลูกค้า..." oninput="renderClients()">
+  </div>
+  <div class="filter-tabs" id="clientFilterTabs">
+    <button class="ftab active" onclick="setClientFilter('all',this)">ทั้งหมด</button>
+    <button class="ftab" onclick="setClientFilter('นิติบุคคล',this)">นิติบุคคล</button>
+    <button class="ftab" onclick="setClientFilter('บุคคลธรรมดา',this)">บุคคลธรรมดา</button>
+    <button class="ftab" onclick="setClientFilter('ห้างหุ้นส่วน',this)">ห้างหุ้นส่วน</button>
+    <button class="ftab" onclick="setClientFilter('inactive',this)">ไม่ใช้งาน</button>
+  </div>
+  <div id="clientList"></div>
+</div>
+
+<!-- TASKS -->
+<div class="section" id="sec-tasks">
+  <div class="search-wrap">
+    <input type="text" class="fc" id="taskSearch" placeholder="ค้นหางาน..." oninput="renderTasks()">
+  </div>
+  <div class="filter-tabs">
+    <button class="ftab active" onclick="setTaskFilter('all',this)">ทั้งหมด</button>
+    <button class="ftab" onclick="setTaskFilter('pending',this)">รอดำเนินการ</button>
+    <button class="ftab" onclick="setTaskFilter('in_progress',this)">กำลังทำ</button>
+    <button class="ftab" onclick="setTaskFilter('overdue',this)">เกินกำหนด</button>
+    <button class="ftab" onclick="setTaskFilter('done',this)">เสร็จแล้ว</button>
+  </div>
+  <div id="taskList"></div>
+</div>
+
+<!-- FINANCE -->
+<div class="section" id="sec-finance">
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="finMove(-1)">‹</button>
+    <div style="font-size:14px;font-weight:700;" id="finTitle">—</div>
+    <button class="month-nav-btn" onclick="finMove(1)">›</button>
+  </div>
+  <div class="fin-summary" style="margin-bottom:10px;">
+    <div class="fin-box"><div class="fin-val green" id="fIncome">฿0</div><div class="fin-lbl">รายรับ</div></div>
+    <div class="fin-box"><div class="fin-val red" id="fExpense">฿0</div><div class="fin-lbl">รายจ่าย</div></div>
+    <div class="fin-box"><div class="fin-val" id="fProfit">฿0</div><div class="fin-lbl">กำไรสุทธิ</div></div>
+  </div>
+  <div class="filter-tabs">
+    <button class="ftab active" onclick="setFinFilter('all',this)">ทั้งหมด</button>
+    <button class="ftab" onclick="setFinFilter('income',this)">รายรับ</button>
+    <button class="ftab" onclick="setFinFilter('expense',this)">รายจ่าย</button>
+  </div>
+  <div id="finList"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="section" id="sec-settings">
+  <div class="card" style="padding:0;overflow:hidden;">
+
+    <!-- Office info -->
+    <div class="acc-item">
+      <div class="acc-row" onclick="toggleAcc('office')">
+        <div class="acc-icon" id="ai-office">🏢</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">ข้อมูลสำนักงาน</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;" id="ah-office">แก้ไขชื่อและข้อมูลสำนักงาน</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-office">▾</div>
+      </div>
+      <div class="acc-body" id="ab-office">
+        <div class="acc-content">
+          <div class="form-grid">
+            <div class="fg"><label>ไอคอน</label><input type="text" class="fc" id="sOfficeIcon" placeholder="🏢" maxlength="4"></div>
+            <div class="fg"><label>ชื่อสำนักงาน</label><input type="text" class="fc" id="sOfficeName" placeholder="สำนักงานบัญชี..."></div>
+            <div class="fg"><label>คำบรรยาย</label><input type="text" class="fc" id="sOfficeSub" placeholder="Accounting Office Management"></div>
+            <div class="fg"><label>เบอร์โทร</label><input type="text" class="fc" id="sOfficePhone" placeholder="0XX-XXX-XXXX"></div>
+            <div class="fg"><label>ที่อยู่</label><textarea class="fc" id="sOfficeAddr" placeholder="ที่อยู่สำนักงาน..."></textarea></div>
+            <button class="btn btn-primary" onclick="saveOfficeInfo()">💾 บันทึก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme -->
+    <div class="acc-item">
+      <div class="acc-row" onclick="toggleAcc('theme')">
+        <div class="acc-icon">🎨</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">ธีม</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;" id="ah-theme">Dark</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-theme">▾</div>
+      </div>
+      <div class="acc-body" id="ab-theme">
+        <div class="acc-content">
+          <div class="theme-grid" id="themeGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backup & Restore -->
+    <div class="acc-item">
+      <div class="acc-row" onclick="toggleAcc('backup')">
+        <div class="acc-icon">💾</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">Backup & Restore</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;">สำรองและกู้คืนข้อมูล</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-backup">▾</div>
+      </div>
+      <div class="acc-body" id="ab-backup">
+        <div class="acc-content">
+          <div style="display:grid;gap:8px;margin-bottom:12px;">
+            <button class="btn btn-primary" onclick="backupAll()">💾 Backup ทั้งหมด (JSON)</button>
+            <button class="btn btn-outline" onclick="exportCSV()">📊 Export CSV</button>
+          </div>
+          <label style="width:100%;padding:11px;border:2px dashed var(--border);border-radius:9px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text2);transition:all .2s;font-family:'Noto Sans Thai',sans-serif;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            📂 เลือกไฟล์ Backup (.json)
+            <input type="file" accept=".json" onchange="restoreBackup(event)" style="display:none;">
+          </label>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <button class="btn btn-danger" style="width:100%;padding:10px;font-size:12px;" onclick="clearAllData()">🗑 ล้างข้อมูลทั้งหมด</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="acc-item">
+      <div class="acc-row" onclick="toggleAcc('about')">
+        <div class="acc-icon">ℹ️</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">เกี่ยวกับ</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px;">v1.0</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);transition:transform .25s;" id="arr-about">▾</div>
+      </div>
+      <div class="acc-body" id="ab-about">
+        <div class="acc-content">
+          <div style="font-size:12px;color:var(--text2);line-height:2;">
+            <div>✓ จัดการข้อมูลลูกค้า (บุคคลธรรมดา / นิติบุคคล / ห้าง)</div>
+            <div>✓ ติดตามงานและกำหนดส่ง</div>
+            <div>✓ บันทึกรายรับ-รายจ่ายสำนักงาน</div>
+            <div>✓ แดชบอร์ดสรุปภาพรวม</div>
+            <div>✓ Backup & Restore ข้อมูล</div>
+            <div style="margin-top:8px;color:var(--text3);font-size:10px;">v1.0 • ระบบสำนักงานบัญชี</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">🏠<br>หน้าหลัก</div>
+  <div class="nav-item" id="nav-clients" onclick="switchTab('clients')">👥<br>ลูกค้า</div>
+  <div class="nav-item" id="nav-tasks" onclick="switchTab('tasks')">📋<br>งาน</div>
+  <div class="nav-item" id="nav-finance" onclick="switchTab('finance')">💰<br>การเงิน</div>
+  <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">⚙️<br>ตั้งค่า</div>
+</div>
+
+<!-- FAB (context-sensitive) -->
+<button class="fab" id="fabBtn" onclick="fabAction()">＋</button>
+
+<!-- ── MODALS ── -->
+
+<!-- ADD/EDIT CLIENT -->
+<div class="modal-overlay" id="clientModal" onclick="if(event.target===this)closeClientModal()">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-hd">
+      <div class="modal-title" id="clientModalTitle">➕ เพิ่มลูกค้าใหม่</div>
+      <button class="modal-close" onclick="closeClientModal()">×</button>
+    </div>
+    <input type="hidden" id="cId">
+    <div class="form-grid">
+      <div class="fg"><label>🏢 ชื่อบริษัท / ชื่อลูกค้า *</label><input type="text" class="fc" id="cName" placeholder="ชื่อลูกค้า..."></div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>ประเภท</label>
+          <select class="fc" id="cType">
+            <option value="นิติบุคคล">นิติบุคคล</option>
+            <option value="บุคคลธรรมดา">บุคคลธรรมดา</option>
+            <option value="ห้างหุ้นส่วน">ห้างหุ้นส่วน</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>สถานะ</label>
+          <select class="fc" id="cStatus">
+            <option value="active">ใช้งาน</option>
+            <option value="inactive">ไม่ใช้งาน</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>🪪 เลขประจำตัวผู้เสียภาษี</label><input type="text" class="fc" id="cTaxId" placeholder="13 หลัก..." maxlength="13"></div>
+      <div class="fg-row">
+        <div class="fg"><label>📞 โทรศัพท์</label><input type="text" class="fc" id="cPhone" placeholder="0XX-XXX-XXXX"></div>
+        <div class="fg"><label>📧 อีเมล</label><input type="email" class="fc" id="cEmail" placeholder="email@..."></div>
+      </div>
+      <div class="fg"><label>💰 ค่าบริการ/เดือน (฿)</label><input type="number" class="fc" id="cFee" placeholder="เช่น 3000" step="100" min="0"></div>
+      <div class="fg"><label>📍 ที่อยู่</label><textarea class="fc" id="cAddress" placeholder="ที่อยู่..." style="min-height:60px;"></textarea></div>
+      <div class="fg"><label>📝 หมายเหตุ</label><textarea class="fc" id="cNotes" placeholder="หมายเหตุ..." style="min-height:50px;"></textarea></div>
+      <button class="btn btn-primary" onclick="saveClient()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENT DETAIL -->
+<div class="modal-overlay" id="clientDetailModal" onclick="if(event.target===this)closeClientDetail()">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-hd">
+      <div class="modal-title" id="cdTitle">รายละเอียดลูกค้า</div>
+      <button class="modal-close" onclick="closeClientDetail()">×</button>
+    </div>
+    <div id="clientDetailBody"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT TASK -->
+<div class="modal-overlay" id="taskModal" onclick="if(event.target===this)closeTaskModal()">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-hd">
+      <div class="modal-title" id="taskModalTitle">➕ เพิ่มงานใหม่</div>
+      <button class="modal-close" onclick="closeTaskModal()">×</button>
+    </div>
+    <input type="hidden" id="tId">
+    <div class="form-grid">
+      <div class="fg">
+        <label>👥 ลูกค้า *</label>
+        <select class="fc" id="tClientId" onchange="tClientChanged()">
+          <option value="">-- เลือกลูกค้า --</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>📋 ประเภทงาน</label>
+        <select class="fc" id="tType">
+          <option value="ภาษีมูลค่าเพิ่ม (VAT)">ภาษีมูลค่าเพิ่ม (VAT)</option>
+          <option value="ภาษีเงินได้นิติบุคคล">ภาษีเงินได้นิติบุคคล</option>
+          <option value="ภาษีเงินได้บุคคลธรรมดา">ภาษีเงินได้บุคคลธรรมดา</option>
+          <option value="ประกันสังคม">ประกันสังคม</option>
+          <option value="งบการเงิน">งบการเงิน</option>
+          <option value="ยื่นงบ (ปีละครั้ง)">ยื่นงบ (ปีละครั้ง)</option>
+          <option value="ตรวจสอบบัญชี">ตรวจสอบบัญชี</option>
+          <option value="บัญชีรายเดือน">บัญชีรายเดือน</option>
+          <option value="ภาษีหัก ณ ที่จ่าย">ภาษีหัก ณ ที่จ่าย</option>
+          <option value="จดทะเบียน/แก้ไขบริษัท">จดทะเบียน/แก้ไขบริษัท</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+      <div class="fg"><label>📌 ชื่องาน / รายละเอียด *</label><input type="text" class="fc" id="tName" placeholder="รายละเอียดงาน..."></div>
+      <div class="fg-row">
+        <div class="fg"><label>📅 กำหนดส่ง</label><input type="date" class="fc" id="tDueDate"></div>
+        <div class="fg">
+          <label>สถานะ</label>
+          <select class="fc" id="tStatus">
+            <option value="pending">รอดำเนินการ</option>
+            <option value="in_progress">กำลังทำ</option>
+            <option value="done">เสร็จแล้ว</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>💰 ค่าบริการ (฿)</label><input type="number" class="fc" id="tFee" placeholder="เช่น 1500" step="100" min="0"></div>
+      <div class="fg"><label>📝 หมายเหตุ</label><textarea class="fc" id="tNotes" placeholder="หมายเหตุ..." style="min-height:50px;"></textarea></div>
+      <button class="btn btn-primary" onclick="saveTask()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TRANSACTION -->
+<div class="modal-overlay" id="transModal" onclick="if(event.target===this)closeTransModal()">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-hd">
+      <div class="modal-title" id="transModalTitle">➕ บันทึกรายการ</div>
+      <button class="modal-close" onclick="closeTransModal()">×</button>
+    </div>
+    <input type="hidden" id="trId">
+    <div class="form-grid">
+      <div class="fg">
+        <label>ประเภท</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button id="trTypeIncome" onclick="setTransType('income')" style="padding:10px;border:2px solid var(--green);border-radius:8px;background:rgba(81,207,102,.15);color:var(--green);font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;transition:all .2s;">📥 รายรับ</button>
+          <button id="trTypeExpense" onclick="setTransType('expense')" style="padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--s2);color:var(--text3);font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans Thai',sans-serif;transition:all .2s;">📤 รายจ่าย</button>
+        </div>
+        <input type="hidden" id="trType" value="income">
+      </div>
+      <div class="fg">
+        <label>หมวดหมู่</label>
+        <select class="fc" id="trCategory">
+          <option value="ค่าบริการบัญชี">ค่าบริการบัญชี</option>
+          <option value="ค่าจัดทำงบการเงิน">ค่าจัดทำงบการเงิน</option>
+          <option value="ค่าตรวจสอบบัญชี">ค่าตรวจสอบบัญชี</option>
+          <option value="ค่าที่ปรึกษา">ค่าที่ปรึกษา</option>
+          <option value="ค่าจดทะเบียน">ค่าจดทะเบียน</option>
+          <option value="รายได้อื่นๆ">รายได้อื่นๆ</option>
+          <option value="เงินเดือนพนักงาน">เงินเดือนพนักงาน</option>
+          <option value="ค่าเช่าสำนักงาน">ค่าเช่าสำนักงาน</option>
+          <option value="ค่าสาธารณูปโภค">ค่าสาธารณูปโภค</option>
+          <option value="ค่าอุปกรณ์/ซอฟต์แวร์">ค่าอุปกรณ์/ซอฟต์แวร์</option>
+          <option value="ค่าใช้จ่ายทั่วไป">ค่าใช้จ่ายทั่วไป</option>
+        </select>
+      </div>
+      <div class="fg"><label>💰 จำนวนเงิน (฿) *</label><input type="number" class="fc" id="trAmount" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="fg">
+        <label>👥 ลูกค้า (ถ้ามี)</label>
+        <select class="fc" id="trClientId">
+          <option value="">-- ไม่ระบุ --</option>
+        </select>
+      </div>
+      <div class="fg"><label>📅 วันที่</label><input type="date" class="fc" id="trDate"></div>
+      <div class="fg"><label>📝 รายละเอียด</label><input type="text" class="fc" id="trDesc" placeholder="รายละเอียด..."></div>
+      <button class="btn btn-primary" onclick="saveTrans()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-overlay" id="deleteModal" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal" style="max-width:480px;">
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="font-size:40px;margin-bottom:8px;">🗑</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;">ยืนยันการลบ</div>
+      <div style="font-size:13px;color:var(--text3);" id="deleteDesc">—</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button class="btn btn-outline" style="padding:12px;" onclick="closeDeleteModal()">ยกเลิก</button>
+      <button class="btn" style="padding:12px;background:linear-gradient(135deg,var(--red),#c0392b);color:#fff;font-weight:700;" onclick="confirmDelete()">🗑 ลบเลย</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────
+const LS_CLIENTS='acc_clients',LS_TASKS='acc_tasks',LS_TRANS='acc_trans',LS_SETTINGS='acc_settings',LS_THEME='acc_theme';
+
+const TASK_STATUS={
+  pending:{label:'รอดำเนินการ',cls:'chip-orange'},
+  in_progress:{label:'กำลังทำ',cls:'chip-blue'},
+  done:{label:'เสร็จแล้ว',cls:'chip-green'},
+  overdue:{label:'เกินกำหนด',cls:'chip-red'},
+};
+const CLIENT_TYPE_ICON={นิติบุคคล:'🏢',บุคคลธรรมดา:'👤',ห้างหุ้นส่วน:'🤝',อื่นๆ:'📁'};
+const MON_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const MONFULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+// ── DATA ACCESS ──────────────────────────────────────────────
+const getClients=()=>JSON.parse(localStorage.getItem(LS_CLIENTS)||'[]');
+const setClients=d=>localStorage.setItem(LS_CLIENTS,JSON.stringify(d));
+const getTasks=()=>JSON.parse(localStorage.getItem(LS_TASKS)||'[]');
+const setTasks=d=>localStorage.setItem(LS_TASKS,JSON.stringify(d));
+const getTrans=()=>JSON.parse(localStorage.getItem(LS_TRANS)||'[]');
+const setTrans=d=>localStorage.setItem(LS_TRANS,JSON.stringify(d));
+const getSettings=()=>JSON.parse(localStorage.getItem(LS_SETTINGS)||'{"icon":"🏢","name":"ระบบสำนักงานบัญชี","sub":"Accounting Office Management","phone":"","address":""}');
+const setSettings=d=>localStorage.setItem(LS_SETTINGS,JSON.stringify(d));
+
+const todayStr=()=>new Date().toISOString().split('T')[0];
+const fmtMoney=n=>'฿'+(+n||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtMoneyShort=n=>{const v=+n||0;return v>=1e6?'฿'+(v/1e6).toFixed(1)+'M':v>=1e3?'฿'+(v/1e3).toFixed(0)+'K':fmtMoney(v);};
+const genId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+function getTaskStatus(task){
+  if(task.status==='done')return'done';
+  if(task.dueDate&&task.dueDate<todayStr()&&task.status!=='done')return'overdue';
+  return task.status||'pending';
+}
+
+// ── THEMES ───────────────────────────────────────────────────
+const THEMES=[
+  {id:'dark',name:'Dark',bg:'#0f1419',surface:'#1a1f2e',s2:'#242d3d',s3:'#2d3749',border:'#3a4556',accent:'#5b7cfa',accent2:'#7c3aed',header:'linear-gradient(135deg,#1e3a8a,#3730a3)',light:false},
+  {id:'midnight',name:'Midnight',bg:'#0a0a0f',surface:'#12121c',s2:'#1a1a2e',s3:'#16213e',border:'#2a2a45',accent:'#e94560',accent2:'#c2185b',header:'linear-gradient(135deg,#0f0c29,#302b63)',light:false},
+  {id:'forest',name:'Forest',bg:'#0d1f14',surface:'#132a1c',s2:'#1a3626',s3:'#214230',border:'#2d5a3a',accent:'#52b788',accent2:'#2d6a4f',header:'linear-gradient(135deg,#1b4332,#2d6a4f)',light:false},
+  {id:'ocean',name:'Ocean',bg:'#020c1b',surface:'#0a192f',s2:'#112240',s3:'#1d3557',border:'#1e3a5f',accent:'#64ffda',accent2:'#00b4d8',header:'linear-gradient(135deg,#023e8a,#0077b6)',light:false},
+  {id:'purple',name:'Purple',bg:'#12001a',surface:'#1e0030',s2:'#2a0044',s3:'#360058',border:'#4a006b',accent:'#bf5af2',accent2:'#9b59b6',header:'linear-gradient(135deg,#4a0080,#7b2d8b)',light:false},
+  {id:'light',name:'Light',bg:'#f5f7fa',surface:'#ffffff',s2:'#f0f4f8',s3:'#e2e8f0',border:'#cbd5e0',accent:'#3b82f6',accent2:'#6366f1',header:'linear-gradient(135deg,#1e40af,#4338ca)',light:true},
+  {id:'gold',name:'Gold',bg:'#0f0c00',surface:'#1a1600',s2:'#242000',s3:'#2e2a00',border:'#4a4000',accent:'#fbbf24',accent2:'#d97706',header:'linear-gradient(135deg,#78350f,#92400e)',light:false},
+  {id:'rose',name:'Rose',bg:'#1a0a0e',surface:'#2d1018',s2:'#3d1622',s3:'#4d1c2c',border:'#6b2438',accent:'#fb7185',accent2:'#e11d48',header:'linear-gradient(135deg,#881337,#9f1239)',light:false},
+];
+
+function applyTheme(id){
+  const t=THEMES.find(x=>x.id===id)||THEMES[0];
+  const r=document.documentElement.style;
+  r.setProperty('--bg',t.bg);r.setProperty('--surface',t.surface);
+  r.setProperty('--s2',t.s2);r.setProperty('--s3',t.s3);
+  r.setProperty('--border',t.border);r.setProperty('--accent',t.accent);r.setProperty('--accent2',t.accent2);
+  r.setProperty('--header',t.header);
+  r.setProperty('--text',t.light?'#1f2937':'#e9ecef');
+  r.setProperty('--text2',t.light?'#4b5563':'#adb5bd');
+  r.setProperty('--text3',t.light?'#9ca3af':'#6c757d');
+  document.getElementById('mainHeader').style.background=t.header;
+  localStorage.setItem(LS_THEME,id);
+  document.getElementById('ah-theme').textContent=t.name;
+  renderThemeGrid();
+}
+function renderThemeGrid(){
+  const cur=localStorage.getItem(LS_THEME)||'dark';
+  const el=document.getElementById('themeGrid');if(!el)return;
+  el.innerHTML=THEMES.map(t=>`
+    <div onclick="applyTheme('${t.id}')" style="cursor:pointer;border-radius:9px;overflow:hidden;border:2px solid ${cur===t.id?'var(--accent)':'var(--border)'};transition:all .2s;">
+      <div style="height:28px;background:${t.header};"></div>
+      <div style="background:${t.surface};padding:5px 3px;text-align:center;">
+        <div style="font-size:9px;color:${cur===t.id?t.accent:'#aaa'};font-weight:700;">${t.name}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── ACCORDION ────────────────────────────────────────────────
+let openAcc=null;
+const ACC_KEYS=['office','theme','backup','about'];
+function toggleAcc(id){
+  const wasOpen=openAcc===id;
+  ACC_KEYS.forEach(k=>{
+    document.getElementById('ab-'+k)?.classList.remove('open');
+    const arr=document.getElementById('arr-'+k);
+    if(arr)arr.style.transform='rotate(0deg)';
+    document.querySelector(`[onclick="toggleAcc('${k}')"]`)?.classList.remove('open');
+  });
+  if(!wasOpen){
+    openAcc=id;
+    document.getElementById('ab-'+id)?.classList.add('open');
+    const arr=document.getElementById('arr-'+id);
+    if(arr)arr.style.transform='rotate(180deg)';
+    document.querySelector(`[onclick="toggleAcc('${id}')"]`)?.classList.add('open');
+    if(id==='office')loadOfficeForm();
+  }else{openAcc=null;}
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+let curTab='dashboard';
+const FAB_LABEL={dashboard:null,clients:'＋',tasks:'＋',finance:'＋',settings:null};
+
+function switchTab(tab){
+  curTab=tab;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+tab)?.classList.add('active');
+  document.querySelector(`.tab[onclick*="${tab}"]`)?.classList.add('active');
+  document.getElementById('nav-'+tab)?.classList.add('active');
+  const fab=document.getElementById('fabBtn');
+  if(FAB_LABEL[tab]){fab.style.display='flex';fab.textContent=FAB_LABEL[tab];}
+  else{fab.style.display='none';}
+  if(tab==='dashboard')renderDashboard();
+  else if(tab==='clients')renderClients();
+  else if(tab==='tasks')renderTasks();
+  else if(tab==='finance')renderFinance();
+  else if(tab==='settings'){renderThemeGrid();}
+}
+
+function fabAction(){
+  if(curTab==='clients')openClientModal();
+  else if(curTab==='tasks')openTaskModal();
+  else if(curTab==='finance')openTransModal();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ── HEADER STATS ──────────────────────────────────────────────
+function updateHeader(){
+  const clients=getClients(),tasks=getTasks(),trans=getTrans();
+  const activeClients=clients.filter(c=>c.status==='active').length;
+  const allTasks=tasks.map(t=>({...t,_status:getTaskStatus(t)}));
+  const pending=allTasks.filter(t=>t._status==='pending'||t._status==='in_progress').length;
+  const overdue=allTasks.filter(t=>t._status==='overdue').length;
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  const s=new Date(y,m,1).toISOString().split('T')[0];
+  const e=new Date(y,m+1,0).toISOString().split('T')[0];
+  const mIncome=trans.filter(t=>t.type==='income'&&t.date>=s&&t.date<=e).reduce((a,t)=>a+(+t.amount||0),0);
+  document.getElementById('hClients').textContent=activeClients;
+  document.getElementById('hPending').textContent=pending;
+  document.getElementById('hOverdue').textContent=overdue;
+  document.getElementById('hIncome').textContent=fmtMoneyShort(mIncome);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDashboard(){
+  updateHeader();
+  const clients=getClients(),tasks=getTasks(),trans=getTrans();
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  const s=new Date(y,m,1).toISOString().split('T')[0];
+  const e=new Date(y,m+1,0).toISOString().split('T')[0];
+  const today=todayStr();
+  const in7=new Date();in7.setDate(in7.getDate()+7);
+  const in7Str=in7.toISOString().split('T')[0];
+
+  const allTasks=tasks.map(t=>({...t,_status:getTaskStatus(t)}));
+  const pending=allTasks.filter(t=>['pending','in_progress'].includes(t._status)).length;
+  const overdue=allTasks.filter(t=>t._status==='overdue').length;
+  const doneThisM=allTasks.filter(t=>t._status==='done'&&t.completedAt&&t.completedAt.startsWith(today.slice(0,7))).length;
+
+  document.getElementById('dClients').textContent=clients.filter(c=>c.status==='active').length;
+  document.getElementById('dPending').textContent=pending;
+  document.getElementById('dOverdue').textContent=overdue;
+  document.getElementById('dDone').textContent=doneThisM;
+
+  const mIncome=trans.filter(t=>t.type==='income'&&t.date>=s&&t.date<=e).reduce((a,t)=>a+(+t.amount||0),0);
+  const mExpense=trans.filter(t=>t.type==='expense'&&t.date>=s&&t.date<=e).reduce((a,t)=>a+(+t.amount||0),0);
+  const profit=mIncome-mExpense;
+  document.getElementById('dMIncome').textContent=fmtMoney(mIncome);
+  document.getElementById('dMExpense').textContent=fmtMoney(mExpense);
+  const profEl=document.getElementById('dMProfit');
+  profEl.textContent=fmtMoney(profit);
+  profEl.style.color=profit>=0?'var(--green)':'var(--red)';
+
+  // Urgent: overdue tasks
+  const urgentTasks=allTasks.filter(t=>t._status==='overdue').slice(0,5);
+  const urgEl=document.getElementById('dashUrgent');
+  if(urgentTasks.length){
+    urgEl.innerHTML=urgentTasks.map(t=>{
+      const cl=clients.find(c=>c.id===t.clientId);
+      const daysOver=t.dueDate?Math.ceil((new Date(today)-new Date(t.dueDate))/(864e5)):0;
+      return `<div class="item-row" onclick="openTaskEdit('${t.id}')">
+        <div class="item-icon" style="background:rgba(255,107,107,.15);">🚨</div>
+        <div class="item-body">
+          <div class="item-name">${t.name||t.type}</div>
+          <div class="item-sub">${cl?cl.name:'—'} · ${t.type}</div>
+          <div class="item-meta"><span class="chip chip-red">เกินกำหนด ${daysOver} วัน</span>${t.dueDate?`<span style="font-size:10px;color:var(--text3);">กำหนด: ${fmtDate(t.dueDate)}</span>`:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }else{
+    urgEl.innerHTML=`<div class="empty-state"><div class="empty-icon">✅</div><div style="font-size:12px;">ไม่มีงานเกินกำหนด</div></div>`;
+  }
+
+  // Upcoming in 7 days (pending/in_progress)
+  const upcoming=allTasks.filter(t=>['pending','in_progress'].includes(t._status)&&t.dueDate&&t.dueDate>=today&&t.dueDate<=in7Str)
+    .sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,5);
+  const upEl=document.getElementById('dashUpcoming');
+  if(upcoming.length){
+    upEl.innerHTML=upcoming.map(t=>{
+      const cl=clients.find(c=>c.id===t.clientId);
+      const daysLeft=Math.ceil((new Date(t.dueDate)-new Date(today))/(864e5));
+      return `<div class="item-row" onclick="openTaskEdit('${t.id}')">
+        <div class="item-icon" style="background:rgba(91,124,250,.15);">📅</div>
+        <div class="item-body">
+          <div class="item-name">${t.name||t.type}</div>
+          <div class="item-sub">${cl?cl.name:'—'} · ${t.type}</div>
+          <div class="item-meta">
+            <span class="chip ${daysLeft<=2?'chip-orange':'chip-blue'}">${daysLeft===0?'วันนี้':daysLeft===1?'พรุ่งนี้':'อีก '+daysLeft+' วัน'}</span>
+            <span style="font-size:10px;color:var(--text3);">${fmtDate(t.dueDate)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }else{
+    upEl.innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><div style="font-size:12px;">ไม่มีงานที่กำลังจะถึงกำหนด</div></div>`;
+  }
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────
+let clientFilter='all';
+function setClientFilter(f,btn){
+  clientFilter=f;
+  document.querySelectorAll('#clientFilterTabs .ftab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderClients();
+}
+
+function renderClients(){
+  let clients=getClients();
+  const q=document.getElementById('clientSearch')?.value.toLowerCase()||'';
+  if(q)clients=clients.filter(c=>c.name.toLowerCase().includes(q)||(c.taxId||'').includes(q)||(c.phone||'').includes(q));
+  if(clientFilter==='inactive')clients=clients.filter(c=>c.status==='inactive');
+  else if(clientFilter!=='all')clients=clients.filter(c=>c.type===clientFilter&&c.status==='active');
+  else clients=clients.filter(c=>c.status==='active');
+
+  const tasks=getTasks();
+  const el=document.getElementById('clientList');
+  if(!clients.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">👥</div><div style="font-size:13px;">ไม่มีลูกค้า</div><div style="font-size:11px;margin-top:4px;">กด ＋ เพื่อเพิ่มลูกค้าใหม่</div></div>`;
+    return;
+  }
+  el.innerHTML=clients.map(c=>{
+    const cTasks=tasks.filter(t=>t.clientId===c.id);
+    const pendingT=cTasks.filter(t=>['pending','in_progress'].includes(getTaskStatus(t))).length;
+    const overdueT=cTasks.filter(t=>getTaskStatus(t)==='overdue').length;
+    const icon=CLIENT_TYPE_ICON[c.type]||'📁';
+    return `<div class="item-row" onclick="openClientDetail('${c.id}')">
+      <div class="item-icon" style="background:rgba(91,124,250,.12);">${icon}</div>
+      <div class="item-body">
+        <div class="item-name">${c.name}</div>
+        <div class="item-sub">${c.type}${c.taxId?' · '+c.taxId:''}</div>
+        <div class="item-meta">
+          ${overdueT?`<span class="chip chip-red">เกินกำหนด ${overdueT}</span>`:''}
+          ${pendingT?`<span class="chip chip-orange">ค้าง ${pendingT} งาน</span>`:''}
+          ${c.monthlyFee?`<span style="font-size:10px;color:var(--text3);">${fmtMoney(c.monthlyFee)}/ด.</span>`:''}
+          ${!overdueT&&!pendingT?`<span class="chip chip-green">ไม่มีงานค้าง</span>`:''}
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-outline btn-sm btn-icon" onclick="event.stopPropagation();openClientEdit('${c.id}')" title="แก้ไข">✏️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openClientModal(prefill){
+  document.getElementById('cId').value='';
+  document.getElementById('cName').value=prefill?.name||'';
+  document.getElementById('cType').value=prefill?.type||'นิติบุคคล';
+  document.getElementById('cStatus').value='active';
+  document.getElementById('cTaxId').value='';
+  document.getElementById('cPhone').value='';
+  document.getElementById('cEmail').value='';
+  document.getElementById('cFee').value='';
+  document.getElementById('cAddress').value='';
+  document.getElementById('cNotes').value='';
+  document.getElementById('clientModalTitle').textContent='➕ เพิ่มลูกค้าใหม่';
+  document.getElementById('clientModal').classList.add('open');
+}
+function openClientEdit(id){
+  const c=getClients().find(x=>x.id===id);if(!c)return;
+  document.getElementById('cId').value=id;
+  document.getElementById('cName').value=c.name||'';
+  document.getElementById('cType').value=c.type||'นิติบุคคล';
+  document.getElementById('cStatus').value=c.status||'active';
+  document.getElementById('cTaxId').value=c.taxId||'';
+  document.getElementById('cPhone').value=c.phone||'';
+  document.getElementById('cEmail').value=c.email||'';
+  document.getElementById('cFee').value=c.monthlyFee||'';
+  document.getElementById('cAddress').value=c.address||'';
+  document.getElementById('cNotes').value=c.notes||'';
+  document.getElementById('clientModalTitle').textContent='✏️ แก้ไขลูกค้า';
+  document.getElementById('clientModal').classList.add('open');
+}
+function closeClientModal(){document.getElementById('clientModal').classList.remove('open');}
+
+function saveClient(){
+  const name=document.getElementById('cName').value.trim();
+  if(!name){toast('⚠️ กรุณากรอกชื่อลูกค้า');return;}
+  const id=document.getElementById('cId').value||genId();
+  const clients=getClients();
+  const idx=clients.findIndex(c=>c.id===id);
+  const rec={id,name,type:document.getElementById('cType').value,status:document.getElementById('cStatus').value,
+    taxId:document.getElementById('cTaxId').value.trim(),phone:document.getElementById('cPhone').value.trim(),
+    email:document.getElementById('cEmail').value.trim(),monthlyFee:+document.getElementById('cFee').value||0,
+    address:document.getElementById('cAddress').value.trim(),notes:document.getElementById('cNotes').value.trim(),
+    createdAt:idx>=0?clients[idx].createdAt:new Date().toISOString()};
+  if(idx>=0)clients[idx]=rec;else clients.push(rec);
+  setClients(clients);
+  closeClientModal();
+  toast(idx>=0?'✅ แก้ไขลูกค้าแล้ว':'✅ เพิ่มลูกค้าแล้ว');
+  renderClients();updateHeader();
+}
+
+function openClientDetail(id){
+  const c=getClients().find(x=>x.id===id);if(!c)return;
+  const tasks=getTasks().filter(t=>t.clientId===id);
+  const allT=tasks.map(t=>({...t,_status:getTaskStatus(t)}));
+  const trans=getTrans().filter(t=>t.clientId===id);
+  const totalIncome=trans.filter(t=>t.type==='income').reduce((a,t)=>a+(+t.amount||0),0);
+  const overdueT=allT.filter(t=>t._status==='overdue');
+  const pendingT=allT.filter(t=>['pending','in_progress'].includes(t._status));
+  const doneT=allT.filter(t=>t._status==='done');
+
+  document.getElementById('cdTitle').textContent=CLIENT_TYPE_ICON[c.type]||'📁'+' '+c.name;
+  let html=`
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:12px;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${CLIENT_TYPE_ICON[c.type]||'📁'} ${c.name}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="chip chip-blue">${c.type}</span>
+        <span class="chip ${c.status==='active'?'chip-green':'chip-gray'}">${c.status==='active'?'ใช้งาน':'ไม่ใช้งาน'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);display:grid;gap:4px;">
+        ${c.taxId?`<div>🪪 ${c.taxId}</div>`:''}
+        ${c.phone?`<div>📞 ${c.phone}</div>`:''}
+        ${c.email?`<div>📧 ${c.email}</div>`:''}
+        ${c.address?`<div>📍 ${c.address}</div>`:''}
+        ${c.monthlyFee?`<div>💰 ค่าบริการ ${fmtMoney(c.monthlyFee)}/เดือน</div>`:''}
+        ${c.notes?`<div>📝 ${c.notes}</div>`:''}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:18px;font-weight:700;color:var(--red);">${overdueT.length}</div>
+        <div style="font-size:9px;color:var(--text3);">เกินกำหนด</div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:18px;font-weight:700;color:var(--orange);">${pendingT.length}</div>
+        <div style="font-size:9px;color:var(--text3);">ค้างอยู่</div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:18px;font-weight:700;color:var(--green);">${fmtMoneyShort(totalIncome)}</div>
+        <div style="font-size:9px;color:var(--text3);">รายรับรวม</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-outline btn-sm" style="flex:1;" onclick="closeClientDetail();openClientEdit('${id}')">✏️ แก้ไข</button>
+      <button class="btn btn-success btn-sm" style="flex:1;" onclick="closeClientDetail();openTaskModalForClient('${id}')">➕ เพิ่มงาน</button>
+      <button class="btn btn-danger btn-sm" onclick="askDeleteClient('${id}')">🗑</button>
+    </div>`;
+
+  // Tasks for this client
+  if(allT.length){
+    html+=`<div class="card-label" style="margin-bottom:8px;">งาน (${allT.length})</div>`;
+    const sorted=[...overdueT,...pendingT,...doneT.slice(0,5)];
+    html+=sorted.map(t=>{
+      const s=TASK_STATUS[t._status]||TASK_STATUS.pending;
+      return `<div class="item-row" style="margin-bottom:6px;" onclick="closeClientDetail();openTaskEdit('${t.id}')">
+        <div class="item-icon" style="background:var(--s3);font-size:14px;">📋</div>
+        <div class="item-body">
+          <div class="item-name" style="font-size:12px;">${t.name||t.type}</div>
+          <div class="item-meta">
+            <span class="chip ${s.cls}" style="font-size:9px;">${s.label}</span>
+            ${t.dueDate?`<span style="font-size:10px;color:var(--text3);">${fmtDate(t.dueDate)}</span>`:''}
+            ${t.fee?`<span style="font-size:10px;color:var(--teal);">${fmtMoney(t.fee)}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('clientDetailBody').innerHTML=html;
+  document.getElementById('clientDetailModal').classList.add('open');
+}
+function closeClientDetail(){document.getElementById('clientDetailModal').classList.remove('open');}
+
+// ── TASKS ────────────────────────────────────────────────────
+let taskFilter='all';
+function setTaskFilter(f,btn){
+  taskFilter=f;
+  document.querySelectorAll('#sec-tasks .filter-tabs .ftab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+function renderTasks(){
+  let tasks=getTasks().map(t=>({...t,_status:getTaskStatus(t)}));
+  const q=document.getElementById('taskSearch')?.value.toLowerCase()||'';
+  if(q){
+    const clients=getClients();
+    tasks=tasks.filter(t=>{
+      const cl=clients.find(c=>c.id===t.clientId);
+      return (t.name||'').toLowerCase().includes(q)||(t.type||'').toLowerCase().includes(q)||(cl?.name||'').toLowerCase().includes(q);
+    });
+  }
+  if(taskFilter!=='all')tasks=tasks.filter(t=>t._status===taskFilter);
+
+  // Sort: overdue first, then by dueDate asc, done last
+  tasks.sort((a,b)=>{
+    const order={overdue:0,in_progress:1,pending:2,done:3};
+    if(order[a._status]!==order[b._status])return order[a._status]-order[b._status];
+    if(a.dueDate&&b.dueDate)return a.dueDate.localeCompare(b.dueDate);
+    if(a.dueDate)return -1;if(b.dueDate)return 1;
+    return 0;
+  });
+
+  const clients=getClients();
+  const el=document.getElementById('taskList');
+  if(!tasks.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div style="font-size:13px;">ไม่มีงาน</div><div style="font-size:11px;margin-top:4px;">กด ＋ เพื่อเพิ่มงานใหม่</div></div>`;
+    return;
+  }
+  el.innerHTML=tasks.map(t=>{
+    const cl=clients.find(c=>c.id===t.clientId);
+    const s=TASK_STATUS[t._status]||TASK_STATUS.pending;
+    const daysInfo=t.dueDate&&t._status!=='done'?daysDiff(t.dueDate):'';
+    return `<div class="item-row" onclick="openTaskEdit('${t.id}')">
+      <div class="item-icon" style="background:var(--s3);">📋</div>
+      <div class="item-body">
+        <div class="item-name">${t.name||t.type}</div>
+        <div class="item-sub">${cl?cl.name:'ไม่ระบุลูกค้า'} · ${t.type}</div>
+        <div class="item-meta">
+          <span class="chip ${s.cls}">${s.label}</span>
+          ${t.dueDate?`<span style="font-size:10px;color:${t._status==='overdue'?'var(--red)':'var(--text3)'};">${fmtDate(t.dueDate)}${daysInfo}</span>`:''}
+          ${t.fee?`<span style="font-size:10px;color:var(--teal);">${fmtMoney(t.fee)}</span>`:''}
+        </div>
+      </div>
+      <div class="item-actions">
+        ${t._status!=='done'?`<button class="btn btn-success btn-sm btn-icon" onclick="event.stopPropagation();markTaskDone('${t.id}')" title="เสร็จแล้ว">✓</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function daysDiff(dateStr){
+  const today=new Date(todayStr()),due=new Date(dateStr);
+  const d=Math.ceil((due-today)/(864e5));
+  if(d<0)return` (เกิน ${Math.abs(d)} วัน)`;
+  if(d===0)return' (วันนี้)';
+  if(d===1)return' (พรุ่งนี้)';
+  return` (อีก ${d} วัน)`;
+}
+
+function openTaskModal(prefill){
+  populateClientDropdowns();
+  document.getElementById('tId').value='';
+  document.getElementById('tClientId').value=prefill?.clientId||'';
+  document.getElementById('tType').value='ภาษีมูลค่าเพิ่ม (VAT)';
+  document.getElementById('tName').value='';
+  document.getElementById('tDueDate').value='';
+  document.getElementById('tStatus').value='pending';
+  document.getElementById('tFee').value='';
+  document.getElementById('tNotes').value='';
+  document.getElementById('taskModalTitle').textContent='➕ เพิ่มงานใหม่';
+  document.getElementById('taskModal').classList.add('open');
+}
+function openTaskModalForClient(clientId){
+  openTaskModal({clientId});
+}
+function openTaskEdit(id){
+  const t=getTasks().find(x=>x.id===id);if(!t)return;
+  populateClientDropdowns();
+  document.getElementById('tId').value=id;
+  document.getElementById('tClientId').value=t.clientId||'';
+  document.getElementById('tType').value=t.type||'ภาษีมูลค่าเพิ่ม (VAT)';
+  document.getElementById('tName').value=t.name||'';
+  document.getElementById('tDueDate').value=t.dueDate||'';
+  document.getElementById('tStatus').value=['pending','in_progress','done'].includes(t.status)?t.status:'pending';
+  document.getElementById('tFee').value=t.fee||'';
+  document.getElementById('tNotes').value=t.notes||'';
+  document.getElementById('taskModalTitle').textContent='✏️ แก้ไขงาน';
+  document.getElementById('taskModal').classList.add('open');
+}
+function closeTaskModal(){document.getElementById('taskModal').classList.remove('open');}
+function tClientChanged(){
+  const id=document.getElementById('tClientId').value;
+  if(id){
+    const c=getClients().find(x=>x.id===id);
+    if(c&&c.monthlyFee&&!document.getElementById('tFee').value)document.getElementById('tFee').value=c.monthlyFee;
+  }
+}
+function saveTask(){
+  const name=document.getElementById('tName').value.trim();
+  const clientId=document.getElementById('tClientId').value;
+  if(!name){toast('⚠️ กรุณากรอกชื่องาน');return;}
+  const id=document.getElementById('tId').value||genId();
+  const tasks=getTasks();
+  const idx=tasks.findIndex(t=>t.id===id);
+  const status=document.getElementById('tStatus').value;
+  const rec={id,clientId,type:document.getElementById('tType').value,name,
+    dueDate:document.getElementById('tDueDate').value||null,status,
+    fee:+document.getElementById('tFee').value||0,notes:document.getElementById('tNotes').value.trim(),
+    completedAt:status==='done'?(idx>=0&&tasks[idx].completedAt?tasks[idx].completedAt:new Date().toISOString()):null,
+    createdAt:idx>=0?tasks[idx].createdAt:new Date().toISOString()};
+  if(idx>=0)tasks[idx]=rec;else tasks.push(rec);
+  setTasks(tasks);
+  closeTaskModal();
+  toast(idx>=0?'✅ แก้ไขงานแล้ว':'✅ เพิ่มงานแล้ว');
+  renderTasks();updateHeader();
+}
+function markTaskDone(id){
+  const tasks=getTasks(),idx=tasks.findIndex(t=>t.id===id);if(idx<0)return;
+  tasks[idx].status='done';tasks[idx].completedAt=new Date().toISOString();
+  setTasks(tasks);toast('✅ เสร็จงานแล้ว');renderTasks();updateHeader();
+}
+
+// ── FINANCE ───────────────────────────────────────────────────
+let finYear=new Date().getFullYear(),finMonth=new Date().getMonth();
+let finFilter='all';
+
+function finMove(d){
+  finMonth+=d;
+  if(finMonth>11){finMonth=0;finYear++;}
+  if(finMonth<0){finMonth=11;finYear--;}
+  renderFinance();
+}
+function setFinFilter(f,btn){
+  finFilter=f;
+  document.querySelectorAll('#sec-finance .filter-tabs .ftab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFinance();
+}
+
+function renderFinance(){
+  const s=`${finYear}-${String(finMonth+1).padStart(2,'0')}-01`;
+  const eD=new Date(finYear,finMonth+1,0);
+  const e=`${finYear}-${String(finMonth+1).padStart(2,'0')}-${String(eD.getDate()).padStart(2,'0')}`;
+  document.getElementById('finTitle').textContent=`${MONFULL[finMonth]} ${finYear}`;
+
+  const trans=getTrans().filter(t=>t.date>=s&&t.date<=e);
+  const income=trans.filter(t=>t.type==='income').reduce((a,t)=>a+(+t.amount||0),0);
+  const expense=trans.filter(t=>t.type==='expense').reduce((a,t)=>a+(+t.amount||0),0);
+  const profit=income-expense;
+  document.getElementById('fIncome').textContent=fmtMoney(income);
+  document.getElementById('fExpense').textContent=fmtMoney(expense);
+  const profEl=document.getElementById('fProfit');
+  profEl.textContent=fmtMoney(profit);
+  profEl.style.color=profit>=0?'var(--green)':'var(--red)';
+
+  let filtered=trans;
+  if(finFilter==='income')filtered=trans.filter(t=>t.type==='income');
+  else if(finFilter==='expense')filtered=trans.filter(t=>t.type==='expense');
+  filtered.sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt));
+
+  const clients=getClients();
+  const el=document.getElementById('finList');
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">💰</div><div style="font-size:13px;">ไม่มีรายการ</div><div style="font-size:11px;margin-top:4px;">กด ＋ เพื่อบันทึกรายการ</div></div>`;
+    return;
+  }
+  el.innerHTML=filtered.map(t=>{
+    const cl=t.clientId?clients.find(c=>c.id===t.clientId):null;
+    const isInc=t.type==='income';
+    return `<div class="fin-item">
+      <div class="fin-dot" style="background:${isInc?'var(--green)':'var(--red)'};"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;">${t.category||'—'}</div>
+        <div style="font-size:10px;color:var(--text3);">${t.description||''}${cl?' · '+cl.name:''}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px;">${fmtDate(t.date)}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:13px;font-weight:700;font-family:'Space Mono',monospace;color:${isInc?'var(--green)':'var(--red)'};">${isInc?'+':'-'}${fmtMoney(t.amount)}</div>
+        <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px;">
+          <button class="btn btn-outline btn-sm btn-icon" style="width:28px;height:28px;" onclick="openTransEdit('${t.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm btn-icon" style="width:28px;height:28px;" onclick="askDeleteTrans('${t.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openTransModal(prefill){
+  populateClientDropdowns();
+  document.getElementById('trId').value='';
+  setTransType(prefill?.type||'income');
+  document.getElementById('trCategory').value=prefill?.category||'ค่าบริการบัญชี';
+  document.getElementById('trAmount').value='';
+  document.getElementById('trClientId').value=prefill?.clientId||'';
+  document.getElementById('trDate').value=todayStr();
+  document.getElementById('trDesc').value='';
+  document.getElementById('transModalTitle').textContent='➕ บันทึกรายการ';
+  document.getElementById('transModal').classList.add('open');
+}
+function openTransEdit(id){
+  const t=getTrans().find(x=>x.id===id);if(!t)return;
+  populateClientDropdowns();
+  document.getElementById('trId').value=id;
+  setTransType(t.type||'income');
+  document.getElementById('trCategory').value=t.category||'ค่าบริการบัญชี';
+  document.getElementById('trAmount').value=t.amount||'';
+  document.getElementById('trClientId').value=t.clientId||'';
+  document.getElementById('trDate').value=t.date||todayStr();
+  document.getElementById('trDesc').value=t.description||'';
+  document.getElementById('transModalTitle').textContent='✏️ แก้ไขรายการ';
+  document.getElementById('transModal').classList.add('open');
+}
+function closeTransModal(){document.getElementById('transModal').classList.remove('open');}
+
+function setTransType(type){
+  document.getElementById('trType').value=type;
+  const incBtn=document.getElementById('trTypeIncome');
+  const expBtn=document.getElementById('trTypeExpense');
+  if(type==='income'){
+    incBtn.style.borderColor='var(--green)';incBtn.style.background='rgba(81,207,102,.15)';incBtn.style.color='var(--green)';
+    expBtn.style.borderColor='var(--border)';expBtn.style.background='var(--s2)';expBtn.style.color='var(--text3)';
+    // Update categories
+    const cats=['ค่าบริการบัญชี','ค่าจัดทำงบการเงิน','ค่าตรวจสอบบัญชี','ค่าที่ปรึกษา','ค่าจดทะเบียน','รายได้อื่นๆ'];
+    updateCatOptions(cats);
+  }else{
+    expBtn.style.borderColor='var(--red)';expBtn.style.background='rgba(255,107,107,.15)';expBtn.style.color='var(--red)';
+    incBtn.style.borderColor='var(--border)';incBtn.style.background='var(--s2)';incBtn.style.color='var(--text3)';
+    const cats=['เงินเดือนพนักงาน','ค่าเช่าสำนักงาน','ค่าสาธารณูปโภค','ค่าอุปกรณ์/ซอฟต์แวร์','ค่าใช้จ่ายทั่วไป'];
+    updateCatOptions(cats);
+  }
+}
+function updateCatOptions(cats){
+  const sel=document.getElementById('trCategory');
+  const cur=sel.value;
+  sel.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(cats.includes(cur))sel.value=cur;
+}
+function saveTrans(){
+  const amount=+document.getElementById('trAmount').value||0;
+  if(!amount){toast('⚠️ กรุณากรอกจำนวนเงิน');return;}
+  const id=document.getElementById('trId').value||genId();
+  const trans=getTrans();
+  const idx=trans.findIndex(t=>t.id===id);
+  const rec={id,type:document.getElementById('trType').value,category:document.getElementById('trCategory').value,
+    amount,clientId:document.getElementById('trClientId').value||null,
+    date:document.getElementById('trDate').value||todayStr(),
+    description:document.getElementById('trDesc').value.trim(),
+    createdAt:idx>=0?trans[idx].createdAt:new Date().toISOString()};
+  if(idx>=0)trans[idx]=rec;else trans.push(rec);
+  setTrans(trans);
+  closeTransModal();
+  toast(idx>=0?'✅ แก้ไขรายการแล้ว':'✅ บันทึกรายการแล้ว');
+  renderFinance();updateHeader();
+}
+
+function populateClientDropdowns(){
+  const clients=getClients().filter(c=>c.status==='active').sort((a,b)=>a.name.localeCompare(b.name,'th'));
+  const opts=clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const tSel=document.getElementById('tClientId');
+  if(tSel){const cur=tSel.value;tSel.innerHTML='<option value="">-- เลือกลูกค้า --</option>'+opts;tSel.value=cur;}
+  const trSel=document.getElementById('trClientId');
+  if(trSel){const cur=trSel.value;trSel.innerHTML='<option value="">-- ไม่ระบุ --</option>'+opts;trSel.value=cur;}
+}
+
+// ── DELETE ────────────────────────────────────────────────────
+let pendingDel=null;
+function closeDeleteModal(){document.getElementById('deleteModal').classList.remove('open');pendingDel=null;}
+function confirmDelete(){
+  if(!pendingDel)return;
+  pendingDel.fn();closeDeleteModal();
+}
+function askDeleteClient(id){
+  const c=getClients().find(x=>x.id===id);if(!c)return;
+  closeClientDetail();
+  document.getElementById('deleteDesc').textContent=`ลูกค้า: ${c.name} (งานทั้งหมดของลูกค้าจะถูกลบด้วย)`;
+  pendingDel={fn:()=>{
+    setClients(getClients().filter(x=>x.id!==id));
+    setTasks(getTasks().filter(t=>t.clientId!==id));
+    toast('🗑 ลบลูกค้าแล้ว');renderClients();updateHeader();
+  }};
+  document.getElementById('deleteModal').classList.add('open');
+}
+function askDeleteTrans(id){
+  const t=getTrans().find(x=>x.id===id);if(!t)return;
+  document.getElementById('deleteDesc').textContent=`${t.type==='income'?'รายรับ':'รายจ่าย'}: ${t.category} — ${fmtMoney(t.amount)}`;
+  pendingDel={fn:()=>{setTrans(getTrans().filter(x=>x.id!==id));toast('🗑 ลบรายการแล้ว');renderFinance();updateHeader();}};
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function loadOfficeForm(){
+  const s=getSettings();
+  document.getElementById('sOfficeIcon').value=s.icon||'🏢';
+  document.getElementById('sOfficeName').value=s.name||'';
+  document.getElementById('sOfficeSub').value=s.sub||'';
+  document.getElementById('sOfficePhone').value=s.phone||'';
+  document.getElementById('sOfficeAddr').value=s.address||'';
+}
+function saveOfficeInfo(){
+  const s={
+    icon:document.getElementById('sOfficeIcon').value||'🏢',
+    name:document.getElementById('sOfficeName').value.trim()||'ระบบสำนักงานบัญชี',
+    sub:document.getElementById('sOfficeSub').value.trim()||'Accounting Office Management',
+    phone:document.getElementById('sOfficePhone').value.trim(),
+    address:document.getElementById('sOfficeAddr').value.trim(),
+  };
+  setSettings(s);
+  applyOfficeInfo(s);
+  toast('✅ บันทึกข้อมูลสำนักงานแล้ว');
+}
+function applyOfficeInfo(s){
+  document.getElementById('headerIcon').textContent=s.icon||'🏢';
+  document.getElementById('headerTitle').textContent=s.name||'ระบบสำนักงานบัญชี';
+  document.getElementById('headerSub').textContent=s.sub||'Accounting Office Management';
+  document.getElementById('ah-office').textContent=s.name||'แก้ไขชื่อและข้อมูลสำนักงาน';
+  document.title=s.name||'ระบบสำนักงานบัญชี';
+}
+
+// ── BACKUP / RESTORE / EXPORT ─────────────────────────────────
+function backupAll(){
+  const data={version:'1.0',exportedAt:new Date().toISOString(),clients:getClients(),tasks:getTasks(),transactions:getTrans(),settings:getSettings()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`acc_backup_${todayStr()}.json`;a.click();
+  toast('✅ Backup สำเร็จ');
+}
+function exportCSV(){
+  const clients=getClients(),tasks=getTasks();
+  let csv='ชื่อลูกค้า,ประเภท,สถานะ,เลขภาษี,โทรศัพท์,อีเมล,ค่าบริการ/ด.,หมายเหตุ\n';
+  csv+=clients.map(c=>[c.name,c.type,c.status==='active'?'ใช้งาน':'ไม่ใช้งาน',c.taxId||'',c.phone||'',c.email||'',c.monthlyFee||0,c.notes||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  csv+='\n\nชื่องาน,ประเภท,ลูกค้า,กำหนดส่ง,สถานะ,ค่าบริการ\n';
+  csv+=tasks.map(t=>{
+    const cl=clients.find(c=>c.id===t.clientId);
+    return[t.name||'',t.type||'',cl?.name||'',t.dueDate||'',getTaskStatus(t),t.fee||0].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  }).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`acc_export_${todayStr()}.csv`;a.click();
+  toast('✅ Export CSV สำเร็จ');
+}
+function restoreBackup(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!data.clients&&!data.tasks&&!data.transactions)throw new Error('invalid');
+      if(data.clients)setClients(data.clients);
+      if(data.tasks)setTasks(data.tasks);
+      if(data.transactions)setTrans(data.transactions);
+      if(data.settings){setSettings(data.settings);applyOfficeInfo(data.settings);}
+      toast('✅ Restore สำเร็จ');renderDashboard();updateHeader();
+    }catch{toast('❌ ไฟล์ไม่ถูกต้อง');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+function clearAllData(){
+  if(!confirm('ยืนยันการล้างข้อมูลทั้งหมด? ไม่สามารถกู้คืนได้'))return;
+  localStorage.removeItem(LS_CLIENTS);localStorage.removeItem(LS_TASKS);localStorage.removeItem(LS_TRANS);
+  toast('🗑 ล้างข้อมูลแล้ว');renderDashboard();updateHeader();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function fmtDate(str){
+  if(!str)return'—';
+  const d=new Date(str);
+  return`${d.getDate()} ${MON_TH[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+(function init(){
+  const theme=localStorage.getItem(LS_THEME)||'dark';
+  applyTheme(theme);
+  const s=getSettings();
+  applyOfficeInfo(s);
+  updateHeader();
+  renderDashboard();
+  // default FAB hidden for settings
+  document.getElementById('fabBtn').style.display='flex';
+})();
+</script>
+</body>
+</html>
