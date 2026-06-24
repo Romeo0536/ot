@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+# ข้อมูลจริง/ใบเสร็จ ไม่ commit ขึ้น git
+inbox/*
+organized/*
+data/*.csv
+data/*.json
+!inbox/.gitkeep
+!organized/.gitkeep
+!data/.gitkeep
