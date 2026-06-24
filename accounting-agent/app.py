@@ -52,7 +52,11 @@ _PROVIDERS = {
 _MODELS = {
     "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
     "ollama": ["qwen2.5vl:7b", "llava:7b", "minicpm-v", "llama3.2", "mistral"],
-    "groq": ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
+    "groq": [
+        "meta-llama/llama-4-scout-17b-16e-instruct",  # vision — อ่านรูปได้
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "llama-3.3-70b-versatile",  # text only
+    ],
     "claude": ["claude-haiku-4-5", "claude-opus-4-8", "claude-sonnet-4-6"],
 }
 
