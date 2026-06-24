@@ -24,24 +24,51 @@ pip install -r requirements.txt
 cp .env.example .env       # แล้วเปิด .env ใส่ API key ของคุณ
 ```
 
-## เลือก AI provider (แนะนำ: Groq ฟรี)
+## เลือก AI provider (แนะนำ: Ollama ฟรี 100%)
 
-ค่าเริ่มต้นคือ **Groq** (ฟรี 100% ไม่มี rate limit) — แก้ได้ใน `config.yaml`:
+ค่าเริ่มต้นคือ **Gemini** — แก้ได้ใน `config.yaml`:
 
 ```yaml
-provider: groq                    # หรือ gemini, claude
-model: mixtral-8x7b-32768         # groq: mixtral-8x7b-32768 (ฟรี)
+provider: ollama                  # หรือ gemini, groq, claude
+model: mistral                    # ollama: mistral / neural-chat / orca-mini
                                   # gemini: gemini-2.5-flash / gemini-2.5-pro
+                                  # groq: mixtral-8x7b-32768
                                   # claude: claude-opus-4-8 / claude-haiku-4-5
 ```
 
-| Provider | สถานะ | ขอ API key | ใส่ใน `.env` |
-|---|---|---|---|
-| **Groq** | ✅ ฟรี + เสถียร | https://console.groq.com/ | `GROQ_API_KEY=...` |
-| **Gemini** | มี free tier | https://aistudio.google.com/apikey | `GEMINI_API_KEY=...` |
-| **Claude** | ต้องจ่าย | https://console.anthropic.com/ | `ANTHROPIC_API_KEY=...` |
+| Provider | สถานะ | ตั้งค่า |
+|---|---|---|
+| **Ollama** (Docker) | ✅ ฟรี 100% local | `docker-compose up` (จำเป็น) |
+| **Groq** | ฟรี แต่ไม่รองรับ PDF ใหญ่ | `GROQ_API_KEY=...` ใน `.env` |
+| **Gemini** | ฟรี แต่ติด 503 บ่อย | `GEMINI_API_KEY=...` ใน `.env` |
+| **Claude** | ต้องจ่าย แต่เสถียร | `ANTHROPIC_API_KEY=...` ใน `.env` |
 
 > สลับ provider เมื่อไหร่ก็ได้ แค่แก้ `provider` + `model` ใน `config.yaml` — โค้ดส่วนอื่นเหมือนเดิม
+
+### เริ่มใช้ Ollama (Docker)
+
+**1. รัน Ollama container:**
+```bash
+docker-compose up -d
+```
+
+**2. ดาวน์โหลด model (ครั้งแรกเท่านั้น ~2GB):**
+```bash
+docker exec ollama-accounting ollama pull mistral
+```
+
+**3. แก้ `config.yaml`:**
+```yaml
+provider: ollama
+model: mistral
+```
+
+**4. ใช้งาน:**
+```bash
+python -m accounting_agent.cli process
+```
+
+> ต่อจากนี้ให้รัน `docker-compose up -d` ก่อนใช้งาน
 
 ## วิธีใช้
 

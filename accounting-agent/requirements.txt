@@ -7,4 +7,5 @@ pypdf>=4.0              # แยกไฟล์ PDF เมื่อมีหล�
 # เลือกติดตั้งตาม provider ที่ใช้ (จะใช้ตัวไหนก็ติดตั้งตัวนั้นพอ)
 google-genai>=1.0      # provider: gemini
 anthropic>=0.69        # provider: claude
-groq>=0.4.1            # provider: groq (ฟรี แนะนำ)
+groq>=0.4.1            # provider: groq (ฟรี)
+requests>=2.31         # provider: ollama (ฟรี 100% local)

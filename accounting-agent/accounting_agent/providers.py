@@ -195,6 +195,67 @@ class GroqProvider:
         return (response.choices[0].message.content or "").strip()
 
 
+# --------------------------------------------------------------------------- #
+# Ollama (Local - Free 100%)
+# --------------------------------------------------------------------------- #
+class OllamaProvider:
+    """ใช้ Ollama (รัน local) — ฟรี 100% ไม่ต้องส่งข้อมูลออกไป."""
+
+    def __init__(self, model: str):
+        import requests
+
+        self.base_url = "http://localhost:11434"
+        self.model = model
+        # เช็คว่า Ollama ทำงาน
+        try:
+            requests.get(f"{self.base_url}/api/tags", timeout=2)
+        except Exception as e:
+            raise ValueError(
+                f"ไม่สามารถเชื่อมต่อ Ollama ที่ {self.base_url} — "
+                f"ให้รัน 'docker-compose up' ก่อน\nError: {e}"
+            )
+
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
+        import base64
+        import requests
+
+        data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
+        mime = mime_for(path)
+        prompt = instructions + "\n\n" + _EXTRACT_PROMPT
+
+        response = requests.post(
+            f"{self.base_url}/api/generate",
+            json={
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "images": [data],
+            },
+            timeout=300,
+        )
+        response.raise_for_status()
+        text = response.json().get("response", "")
+        try:
+            return ReceiptBatch.model_validate_json(text).receipts
+        except Exception:
+            return ReceiptBatch.model_validate(json.loads(text)).receipts
+
+    def write_text(self, prompt: str, max_tokens: int) -> str:
+        import requests
+
+        response = requests.post(
+            f"{self.base_url}/api/generate",
+            json={
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+            },
+            timeout=300,
+        )
+        response.raise_for_status()
+        return (response.json().get("response", "") or "").strip()
+
+
 def get_provider(name: str, model: str) -> Provider:
     name = name.lower()
     if name == "gemini":
@@ -203,4 +264,6 @@ def get_provider(name: str, model: str) -> Provider:
         return ClaudeProvider(model)
     if name == "groq":
         return GroqProvider(model)
-    raise ValueError(f"provider ไม่รองรับ: {name} (เลือก 'gemini', 'claude', หรือ 'groq')")
+    if name == "ollama":
+        return OllamaProvider(model)
+    raise ValueError(f"provider ไม่รองรับ: {name} (เลือก 'gemini', 'claude', 'groq', หรือ 'ollama')")
