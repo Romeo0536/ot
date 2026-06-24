@@ -10,6 +10,7 @@ import SDK แบบ lazy — ติดตั้งเฉพาะตัวท�
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import List, Protocol
 
@@ -50,6 +51,9 @@ class Provider(Protocol):
 class GeminiProvider:
     """ใช้ Google Gemini (อ่าน GEMINI_API_KEY หรือ GOOGLE_API_KEY จาก env)."""
 
+    _MAX_RETRIES = 4
+    _RETRY_CODES = {"503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"}
+
     def __init__(self, model: str):
         from google import genai
 
@@ -57,10 +61,27 @@ class GeminiProvider:
         self.client = genai.Client()
         self.model = model
 
+    def _generate(self, **kwargs):
+        """เรียก generate_content พร้อม retry อัตโนมัติเมื่อ Gemini 503/429."""
+        last_exc: Exception = RuntimeError("no attempt")
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                return self.client.models.generate_content(**kwargs)
+            except Exception as exc:
+                msg = str(exc)
+                if any(code in msg for code in self._RETRY_CODES):
+                    if attempt < self._MAX_RETRIES - 1:
+                        wait = 2 ** attempt  # 1s, 2s, 4s
+                        time.sleep(wait)
+                        last_exc = exc
+                        continue
+                raise
+        raise last_exc
+
     def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
         from google.genai import types
 
-        response = self.client.models.generate_content(
+        response = self._generate(
             model=self.model,
             contents=[
                 types.Part.from_bytes(
@@ -74,7 +95,6 @@ class GeminiProvider:
                 response_schema=ReceiptBatch,
             ),
         )
-        # response.parsed คือ ReceiptBatch; เผื่อ parse ไม่สำเร็จก็ fallback อ่าน text
         if isinstance(response.parsed, ReceiptBatch):
             return response.parsed.receipts
         return ReceiptBatch.model_validate(json.loads(response.text)).receipts
@@ -82,7 +102,7 @@ class GeminiProvider:
     def write_text(self, prompt: str, max_tokens: int) -> str:
         from google.genai import types
 
-        response = self.client.models.generate_content(
+        response = self._generate(
             model=self.model,
             contents=prompt,
             config=types.GenerateContentConfig(max_output_tokens=max_tokens),

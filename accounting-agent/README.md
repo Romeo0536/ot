@@ -1,28 +1,41 @@
-# 🧾 AI Agent นักบัญชี (Local)
+# 🧾 AI Agent นักบัญชี
 
-ระบบ AI ที่รันบนเครื่องคุณเอง อ่านใบเสร็จจากโฟลเดอร์ ดึงข้อมูลด้วย Claude
-จัดไฟล์เข้าโฟลเดอร์อัตโนมัติ และสรุปบัญชีรายเดือนพร้อมส่งสำนักงานบัญชี
+ระบบ AI อ่านใบเสร็จ/บิล (PDF หรือรูป) แล้วส่งออกเป็น Excel อัตโนมัติ
 
-> สร้างตามแนวคิด "AI Agent นักบัญชี" — แต่เป็นโค้ดของคุณเอง ข้อมูลอยู่บนเครื่องคุณ
+> ใช้ Google Gemini (ฟรี) — ข้อมูลส่งไปที่ Gemini เฉพาะตอนอ่านใบเสร็จ
+
+## วิธีใช้ (Web Interface — แนะนำ)
+
+**Windows — ดับเบิลคลิก `run_app.bat`** แล้วเปิดเบราว์เซอร์ที่ `http://localhost:8501`
+
+| ขั้นตอน | รายละเอียด |
+|---|---|
+| 1. ขอ Gemini API Key | ฟรีที่ https://aistudio.google.com/apikey |
+| 2. วาง API Key | ในช่องซ้ายมือของหน้าเว็บ |
+| 3. อัปโหลดไฟล์ | PDF / JPG / PNG (ลากวางได้หลายไฟล์พร้อมกัน) |
+| 4. กด "เริ่มอ่าน" | AI อ่านและดึงข้อมูลทุกใบเสร็จ |
+| 5. ดาวน์โหลด | กด "ดาวน์โหลด Excel (.xlsx)" |
 
 ## ระบบทำอะไรได้บ้าง
 
 | Skill | โมดูล | ทำอะไร |
 |---|---|---|
-| ดึงเอกสาร | `cli.py` (process) | อ่านทุกไฟล์ใน `inbox/` |
-| อ่านใบเสร็จด้วย AI | `extract.py` | PDF/รูป → ดึง วันที่/ร้านค้า/ยอดเงิน/ภาษี เป็น JSON |
-| จัดโฟลเดอร์ | `organize.py` | ย้ายเข้า `organized/ปี/เดือน/หมวด/` + เปลี่ยนชื่อ |
+| Web Interface | `app.py` | อัปโหลด → AI อ่าน → ดาวน์โหลด Excel |
+| ดึงเอกสาร | `cli.py` (process) | อ่านทุกไฟล์ใน `inbox/` (command line) |
+| อ่านใบเสร็จด้วย AI | `extract.py` | PDF/รูป → ดึง วันที่/ร้านค้า/ยอดเงิน/ภาษี |
+| จัดโฟลเดอร์ | `organize.py` | ย้ายเข้า `organized/ปี/เดือน/หมวด/` |
 | สมุดบัญชีรวม | `store.py` | บันทึกทุกใบลง `data/ledger.csv` |
-| Monthly Brief | `brief.py` | สรุปรายเดือน + ให้ AI เขียนบรรยาย เป็นไฟล์ `.md` |
+| Monthly Brief | `brief.py` | สรุปรายเดือน + ให้ AI เขียนบรรยาย |
 
-## ติดตั้ง
+## ติดตั้ง (ครั้งแรก)
 
 ```bash
 cd accounting-agent
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env       # แล้วเปิด .env ใส่ API key ของคุณ
 ```
+
+หรือบน Windows แค่ดับเบิลคลิก `run_app.bat` — มันจะติดตั้งและเปิดเว็บให้เอง
 
 ## เลือก AI provider (แนะนำ: Ollama ฟรี 100%)
 

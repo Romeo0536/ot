@@ -4,6 +4,11 @@ PyYAML>=6.0
 python-dotenv>=1.0
 pypdf>=4.0              # แยกไฟล์ PDF เมื่อมีหลายบิลในไฟล์เดียว
 
+# Web interface (streamlit run app.py)
+streamlit>=1.35
+openpyxl>=3.1           # ส่งออก Excel (.xlsx)
+pandas>=2.0             # ตารางข้อมูลใน UI
+
 # เลือกติดตั้งตาม provider ที่ใช้ (จะใช้ตัวไหนก็ติดตั้งตัวนั้นพอ)
 google-genai>=1.0      # provider: gemini
 anthropic>=0.69        # provider: claude
