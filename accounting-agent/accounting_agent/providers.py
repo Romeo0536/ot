@@ -295,16 +295,29 @@ class OllamaProvider:
 
     def _pdf_or_image_to_pil(self, path: Path):
         """แปลงไฟล์เป็น PIL Image list (ใช้ทั้ง OCR และ vision mode)."""
-        import os
-
         if path.suffix.lower() == ".pdf":
-            from pdf2image import convert_from_path
-
-            poppler_path = os.getenv("POPPLER_PATH") or None
-            return convert_from_path(str(path), poppler_path=poppler_path)
+            return self._pdf_to_pil(path)
         from PIL import Image
 
         return [Image.open(path)]
+
+    def _pdf_to_pil(self, path: Path):
+        """Render PDF เป็น list ของ PIL Image — ลอง pypdfium2 ก่อน (ไม่ต้องมี poppler)."""
+        try:
+            import pypdfium2 as pdfium
+
+            pdf = pdfium.PdfDocument(str(path))
+            return [pdf[i].render(scale=2.0).to_pil() for i in range(len(pdf))]
+        except ImportError:
+            pass
+
+        # fallback: pdf2image (ต้องมี poppler ติดตั้งไว้)
+        import os
+
+        from pdf2image import convert_from_path
+
+        poppler_path = os.getenv("POPPLER_PATH") or None
+        return convert_from_path(str(path), poppler_path=poppler_path)
 
     def _document_text(self, path: Path) -> str:
         """ดึงข้อความจากไฟล์ พร้อมคั่นรายหน้าไว้ให้ LLM อ้างเลขหน้าได้."""
