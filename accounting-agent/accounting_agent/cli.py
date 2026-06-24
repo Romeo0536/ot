@@ -155,6 +155,7 @@ def cmd_brief(config: Config, month: str, no_ai: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()  # โหลด .env ที่จุดเริ่มต้น
     parser = argparse.ArgumentParser(
         prog="accounting-agent",
         description="AI Agent นักบัญชี: อ่านใบเสร็จ จัดโฟลเดอร์ สรุปบัญชี",
