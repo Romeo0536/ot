@@ -345,7 +345,9 @@ class OllamaProvider:
 
         pdf = pdfium.PdfDocument(str(path))
         try:
-            images = [pdf[i].render(scale=1.8).to_pil() for i in range(len(pdf))]
+            # scale 1.3 — พอให้ vision model อ่านตัวเลขออก แต่เบาพอให้ CPU ไหว
+            # (scale สูง = รูปคมแต่ token เยอะ = ช้ามากบน CPU)
+            images = [pdf[i].render(scale=1.3).to_pil() for i in range(len(pdf))]
         finally:
             pdf.close()  # ปลดล็อกไฟล์ก่อน Streamlit ลบ tempdir
         return images
@@ -413,7 +415,7 @@ class OllamaProvider:
         }
         if fmt is not None:
             payload["format"] = fmt  # โครง JSON บังคับ output (Ollama structured output)
-        response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=900)
+        response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=1800)
         if not response.ok:
             # ดึงข้อความ error ของ Ollama ออกมาให้อ่านได้
             detail = response.text[:500] if response.text else response.reason
