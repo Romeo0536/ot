@@ -6,7 +6,7 @@ pypdf>=4.0              # แยกไฟล์ PDF เมื่อมีหล�
 pypdfium2>=4.0          # Render PDF เป็นรูป (ไม่ต้องลง poppler) สำหรับ Ollama vision
 
 # Web interface (streamlit run app.py)
-streamlit>=1.35
+streamlit>=1.42
 openpyxl>=3.1           # ส่งออก Excel (.xlsx)
 pandas>=2.0             # ตารางข้อมูลใน UI
 

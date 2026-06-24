@@ -39,7 +39,22 @@ def _load_config():
 
 
 _cfg = _load_config()
-_PROVIDER = _cfg.provider.lower()
+
+# ตัวเลือก provider / model ใน UI (key = ชื่อใน config, label = แสดงในเมนู)
+_PROVIDERS = {
+    "gemini": "🔮 Gemini (Google) — ฟรี เร็ว แม่น",
+    "ollama": "🦙 Ollama (local) — ฟรี 100% ออฟไลน์",
+    "groq": "⚡ Groq — ฟรี เร็วมาก (ไฟล์เล็ก)",
+    "claude": "🤖 Claude (Anthropic) — เสถียร เสียเงิน",
+}
+
+# โมเดลแนะนำของแต่ละ provider — เลือกจาก dropdown หรือพิมพ์เองได้
+_MODELS = {
+    "gemini": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+    "ollama": ["qwen2.5vl:7b", "llava:7b", "minicpm-v", "llama3.2", "mistral"],
+    "groq": ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
+    "claude": ["claude-haiku-4-5", "claude-opus-4-8", "claude-sonnet-4-6"],
+}
 
 # provider ที่ต้องใช้ API key (Ollama รัน local ไม่ต้องมี key)
 _API_KEY_ENV = {
@@ -58,15 +73,55 @@ _KEY_HELP = {
     "groq": "ขอ key ฟรีที่ https://console.groq.com/",
 }
 
+# ค่าตั้งต้นจาก config.yaml — ใช้ครั้งแรกเท่านั้น (หลังจากนั้น session_state เก็บค่าผู้ใช้เลือก)
+if "provider" not in st.session_state:
+    st.session_state["provider"] = (
+        _cfg.provider.lower() if _cfg.provider.lower() in _PROVIDERS else "gemini"
+    )
+if "model" not in st.session_state:
+    st.session_state["model"] = _cfg.model
+
 # --------------------------------------------------------------------------- #
-# Sidebar — ตั้งค่า (แสดงช่อง API key เฉพาะ provider ที่ต้องใช้)
+# Sidebar — เลือก AI provider + model + API key
 # --------------------------------------------------------------------------- #
 with st.sidebar:
     st.header("⚙️ ตั้งค่า")
-    st.caption(f"AI ที่ใช้: **{_PROVIDER}** ({_cfg.model})")
 
-    api_key_input = ""
+    # 1) เลือก provider
+    provider_keys = list(_PROVIDERS.keys())
+    selected_provider = st.selectbox(
+        "AI Provider",
+        options=provider_keys,
+        index=provider_keys.index(st.session_state["provider"]),
+        format_func=lambda k: _PROVIDERS[k],
+    )
+    # ถ้าผู้ใช้เปลี่ยน provider → รีเซ็ต model เป็นตัวแรกของ provider ใหม่
+    if selected_provider != st.session_state["provider"]:
+        st.session_state["provider"] = selected_provider
+        st.session_state["model"] = _MODELS[selected_provider][0]
+        st.rerun()
+
+    _PROVIDER = st.session_state["provider"]
+
+    # 2) เลือก model (พิมพ์เองได้)
+    model_options = _MODELS[_PROVIDER]
+    current_model = st.session_state["model"]
+    if current_model not in model_options:
+        model_options = [current_model] + model_options
+    selected_model = st.selectbox(
+        "Model",
+        options=model_options,
+        index=model_options.index(current_model),
+        accept_new_options=True,
+        help="พิมพ์ชื่อ model อื่นได้ ถ้าไม่มีในรายการ",
+    )
+    st.session_state["model"] = selected_model
+
+    st.divider()
+
+    # 3) API key (ถ้า provider ต้องใช้)
     needs_key = _PROVIDER in _API_KEY_ENV
+    api_key_input = ""
     if needs_key:
         env_name = _API_KEY_ENV[_PROVIDER]
         api_key_input = st.text_input(
@@ -79,7 +134,6 @@ with st.sidebar:
         if api_key_input:
             os.environ[env_name] = api_key_input
     else:
-        # Ollama — ไม่ต้องมี API key
         st.success("🦙 ใช้ Ollama (local) — ไม่ต้องใช้ API key", icon="✅")
         st.caption("ต้องเปิดโปรแกรม Ollama ค้างไว้ (ไอคอนลามะมุมขวาล่าง)")
 
@@ -112,7 +166,7 @@ st.caption("อัปโหลดบิล/ใบเสร็จ (PDF หรื�
 def _get_provider():
     from accounting_agent.providers import get_provider
 
-    return get_provider(_cfg.provider, _cfg.model)
+    return get_provider(st.session_state["provider"], st.session_state["model"])
 
 
 # --------------------------------------------------------------------------- #
