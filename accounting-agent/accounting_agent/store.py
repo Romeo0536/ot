@@ -10,6 +10,7 @@ from .models import Receipt
 
 FIELDNAMES = [
     "receipt_date",
+    "date",
     "vendor",
     "category",
     "total_amount",
@@ -25,6 +26,25 @@ FIELDNAMES = [
 ]
 
 BOM = "\ufeff"  # ช่วยให้ Excel อ่านภาษาไทยถูกต้อง
+
+
+def thai_date(receipt_date: str | None) -> str:
+    """แปลงวันที่ ค.ศ. (YYYY-MM-DD) เป็นรูปแบบ DDMMYY ปี พ.ศ.
+
+    เช่น 2026-04-01 -> '010469' (วัน 01 / เดือน 04 / พ.ศ. 2569 เอาสองหลักท้าย)
+    คืนค่าว่างถ้าวันที่ไม่ถูกรูปแบบ
+    """
+    if not receipt_date:
+        return ""
+    parts = receipt_date.split("-")
+    if len(parts) != 3:
+        return ""
+    try:
+        year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+    except ValueError:
+        return ""
+    buddhist_yy = (year + 543) % 100
+    return f"{day:02d}{month:02d}{buddhist_yy:02d}"
 
 
 def ledger_writable(ledger_path: Path) -> bool:
@@ -58,6 +78,7 @@ def append_receipt(
         writer.writerow(
             {
                 "receipt_date": receipt.receipt_date or "",
+                "date": thai_date(receipt.receipt_date),
                 "vendor": receipt.vendor,
                 "category": receipt.category,
                 "total_amount": receipt.total_amount,
