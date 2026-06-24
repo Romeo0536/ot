@@ -24,6 +24,19 @@ FIELDNAMES = [
     "notes",
 ]
 
+BOM = "\ufeff"  # ช่วยให้ Excel อ่านภาษาไทยถูกต้อง
+
+
+def ledger_writable(ledger_path: Path) -> bool:
+    """เช็คว่าเขียน ledger ได้ไหม (False ถ้าถูกล็อก เช่น เปิดค้างใน Excel)."""
+    if not ledger_path.exists():
+        return True  # ยังไม่มีไฟล์ เดี๋ยวสร้างใหม่ได้
+    try:
+        with ledger_path.open("a", encoding="utf-8"):
+            return True
+    except PermissionError:
+        return False
+
 
 def append_receipt(
     ledger_path: Path,
@@ -35,9 +48,12 @@ def append_receipt(
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     is_new = not ledger_path.exists()
 
-    with ledger_path.open("a", newline="", encoding="utf-8-sig") as f:
+    # ใช้ utf-8 ธรรมดา แล้วเขียน BOM เองตอนสร้างไฟล์ใหม่เท่านั้น
+    # (ถ้าใช้ utf-8-sig กับโหมด append มันจะแทรก BOM กลางไฟล์ทุกครั้งที่ append)
+    with ledger_path.open("a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         if is_new:
+            f.write(BOM)
             writer.writeheader()
         writer.writerow(
             {

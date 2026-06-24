@@ -16,11 +16,10 @@ def _safe(text: str, max_len: int = 40) -> str:
     return (text or "unknown")[:max_len]
 
 
-def organize_file(source: Path, receipt: Receipt, organized_root: Path) -> Path:
-    """ย้ายไฟล์เข้า organized/<ปี>/<เดือน>/<หมวด>/ พร้อมเปลี่ยนชื่อ.
+def plan_destination(source: Path, receipt: Receipt, organized_root: Path) -> Path:
+    """คำนวณ path ปลายทาง (ยังไม่ย้ายไฟล์) — organized/<ปี>/<เดือน>/<หมวด>/.
 
     ชื่อใหม่: YYYY-MM-DD_ร้านค้า_ยอดเงิน.ext
-    คืนค่า path ปลายทาง
     """
     date = receipt.receipt_date or "0000-00-00"
     year, month = (date.split("-") + ["00", "00"])[:2]
@@ -29,14 +28,24 @@ def organize_file(source: Path, receipt: Receipt, organized_root: Path) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     amount = f"{receipt.total_amount:.2f}"
-    filename = f"{date}_{_safe(receipt.vendor)}_{amount}{source.suffix.lower()}"
-    dest = dest_dir / filename
+    ext = source.suffix.lower()
+    base = f"{date}_{_safe(receipt.vendor)}_{amount}"
+    dest = dest_dir / f"{base}{ext}"
 
     # กันชื่อชนกัน
     counter = 1
     while dest.exists():
-        dest = dest_dir / f"{date}_{_safe(receipt.vendor)}_{amount}_{counter}{source.suffix.lower()}"
+        dest = dest_dir / f"{base}_{counter}{ext}"
         counter += 1
+    return dest
 
+
+def move_to(source: Path, dest: Path) -> Path:
+    """ย้ายไฟล์ไปยังปลายทางที่คำนวณไว้."""
     shutil.move(str(source), str(dest))
     return dest
+
+
+def organize_file(source: Path, receipt: Receipt, organized_root: Path) -> Path:
+    """คำนวณปลายทางแล้วย้ายไฟล์ในขั้นตอนเดียว (คืนค่า path ปลายทาง)."""
+    return move_to(source, plan_destination(source, receipt, organized_root))

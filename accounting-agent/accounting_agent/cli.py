@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 from .brief import generate_brief
 from .config import Config
 from .extract import SUPPORTED_SUFFIXES, extract_receipt
-from .organize import organize_file
+from .organize import move_to, plan_destination
 from .providers import Provider, get_provider
-from .store import append_receipt
+from .store import append_receipt, ledger_writable
 
 
 def _provider(config: Config) -> Provider:
@@ -28,6 +28,14 @@ def _provider(config: Config) -> Provider:
 
 def cmd_process(config: Config) -> int:
     """อ่านทุกไฟล์ใน inbox -> ดึงข้อมูล -> จัดโฟลเดอร์ -> บันทึก ledger."""
+    # เช็คก่อนว่า ledger เขียนได้ไหม จะได้ไม่เสีย API call ฟรีถ้าไฟล์ถูกล็อก
+    if not ledger_writable(config.ledger):
+        print(
+            f"⚠️  เขียน {config.ledger} ไม่ได้ — น่าจะเปิดค้างไว้ใน Excel\n"
+            "    ปิดไฟล์นั้นก่อน แล้วรัน process ใหม่อีกครั้ง"
+        )
+        return 1
+
     provider = _provider(config)
     files = sorted(
         p for p in config.inbox.iterdir()
@@ -42,8 +50,11 @@ def cmd_process(config: Config) -> int:
     for path in files:
         try:
             receipt = extract_receipt(path, config, provider)
-            stored = organize_file(path, receipt, config.organized)
+            # บันทึก ledger ก่อนย้ายไฟล์ — ถ้าเขียน ledger ไม่ได้ ไฟล์จะยังอยู่ใน inbox
+            # (รันใหม่ได้ ไม่มีไฟล์ค้างที่ organized โดยไม่มีข้อมูลใน ledger)
+            stored = plan_destination(path, receipt, config.organized)
             append_receipt(config.ledger, receipt, path.name, str(stored))
+            move_to(path, stored)
             flag = "  ⚠️ ควรตรวจซ้ำ" if receipt.confidence < 0.6 else ""
             print(
                 f"✓ {path.name}\n"
