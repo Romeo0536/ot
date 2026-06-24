@@ -225,15 +225,22 @@ _MIN_TEXT_LAYER = 30
 class OllamaProvider:
     """ใช้ Ollama (รัน local) — ฟรี 100% ไม่ต้องส่งข้อมูลออกไป.
 
-    อ่านใบเสร็จด้วยวิธี: ดึงข้อความออกจากไฟล์ก่อน แล้วส่งให้ LLM แยกข้อมูล
-      - PDF ที่เป็นข้อความ (digital) → ใช้ pypdf อ่าน text layer (ไม่ต้องลงโปรแกรมเสริม)
-      - PDF สแกน / รูปภาพ → ใช้ OCR (pytesseract + poppler) เป็น fallback
+    มี 2 โหมดอัตโนมัติตามชื่อ model:
+      • Vision mode (qwen2.5vl, llava, minicpm-v, llama3.2-vision ฯลฯ)
+        - ส่งรูปตรงเข้า Ollama — ไม่ต้องใช้ OCR/Tesseract!
+        - PDF: ถ้ามี text layer ใช้ text mode (เร็วกว่า); ถ้าสแกน render เป็นรูป
+      • Text mode (mistral, llama3.2, qwen2.5 ฯลฯ)
+        - PDF digital → อ่าน text layer ด้วย pypdf (ไม่ต้องลงโปรแกรมเสริม)
+        - PDF สแกน/รูป → OCR ด้วย pytesseract + poppler
 
     env ที่เกี่ยวข้อง (ตั้งใน .env ได้):
       OLLAMA_HOST    เปลี่ยน URL ของ Ollama (ค่าเริ่มต้น http://localhost:11434)
-      POPPLER_PATH   โฟลเดอร์ bin ของ poppler (ใช้ตอน OCR ไฟล์ PDF สแกน)
+      POPPLER_PATH   โฟลเดอร์ bin ของ poppler (ใช้ตอน OCR/render PDF)
       TESSERACT_CMD  พาธไฟล์ tesseract.exe (ถ้าไม่ได้อยู่ใน PATH)
     """
+
+    # ชื่อ model ที่บ่งบอกว่า support vision (จะเปิด vision mode อัตโนมัติ)
+    _VISION_KEYWORDS = ("vl", "vision", "llava", "minicpm-v", "bakllava", "moondream")
 
     def __init__(self, model: str):
         import os
@@ -247,10 +254,16 @@ class OllamaProvider:
         except Exception as e:
             raise ValueError(
                 f"ไม่สามารถเชื่อมต่อ Ollama ที่ {self.base_url} — "
-                f"ให้รัน 'docker-compose up -d' ก่อน\nError: {e}"
+                f"ให้ติดตั้ง Ollama ที่ https://ollama.com/download "
+                f"หรือรัน 'docker-compose up -d'\nError: {e}"
             )
 
-    # --- การดึงข้อความออกจากไฟล์ ------------------------------------------ #
+    @property
+    def is_vision_model(self) -> bool:
+        m = self.model.lower()
+        return any(kw in m for kw in self._VISION_KEYWORDS)
+
+    # --- การดึงข้อความออกจากไฟล์ (text mode) ------------------------------ #
     def _pdf_text_layer(self, path: Path) -> List[str]:
         """อ่านข้อความจาก text layer ของ PDF (คืนค่า list ข้อความรายหน้า)."""
         from pypdf import PdfReader
@@ -277,37 +290,70 @@ class OllamaProvider:
         if tess_cmd:
             pytesseract.pytesseract.tesseract_cmd = tess_cmd
 
+        for img in self._pdf_or_image_to_pil(path):
+            yield self._ocr_image_obj(img)
+
+    def _pdf_or_image_to_pil(self, path: Path):
+        """แปลงไฟล์เป็น PIL Image list (ใช้ทั้ง OCR และ vision mode)."""
+        import os
+
         if path.suffix.lower() == ".pdf":
             from pdf2image import convert_from_path
 
             poppler_path = os.getenv("POPPLER_PATH") or None
-            images = convert_from_path(str(path), poppler_path=poppler_path)
-        else:
-            from PIL import Image
+            return convert_from_path(str(path), poppler_path=poppler_path)
+        from PIL import Image
 
-            images = [Image.open(path)]
-        return [self._ocr_image_obj(img) for img in images]
+        return [Image.open(path)]
 
     def _document_text(self, path: Path) -> str:
         """ดึงข้อความจากไฟล์ พร้อมคั่นรายหน้าไว้ให้ LLM อ้างเลขหน้าได้."""
         if path.suffix.lower() == ".pdf":
             pages = self._pdf_text_layer(path)
             if sum(len(p.strip()) for p in pages) < _MIN_TEXT_LAYER:
-                pages = self._ocr_pages(path)  # PDF สแกน → OCR
+                pages = list(self._ocr_pages(path))  # PDF สแกน → OCR
         else:
-            pages = self._ocr_pages(path)
+            pages = list(self._ocr_pages(path))
 
         return "\n\n".join(
             f"=== หน้า {i} ===\n{text.strip()}" for i, text in enumerate(pages, 1)
         )
 
+    # --- ส่งรูปตรงเข้า Ollama (vision mode) ------------------------------- #
+    def _image_to_b64(self, path: Path) -> List[str]:
+        """แปลงไฟล์รูปเดียวเป็น base64 (รายการ 1 ตัว — ให้ format ตรงกับ PDF)."""
+        import base64
+
+        return [base64.standard_b64encode(path.read_bytes()).decode("utf-8")]
+
+    def _pdf_pages_to_b64(self, path: Path) -> List[str]:
+        """แปลง PDF ทุกหน้าเป็นรูป base64 (PNG)."""
+        import base64
+        import io
+
+        out: List[str] = []
+        for img in self._pdf_or_image_to_pil(path):
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            out.append(base64.standard_b64encode(buf.getvalue()).decode("utf-8"))
+        return out
+
     # --- เรียก Ollama ----------------------------------------------------- #
-    def _chat(self, prompt: str, fmt: object | None = None) -> str:
+    def _chat(
+        self,
+        prompt: str,
+        fmt: object | None = None,
+        images_b64: List[str] | None = None,
+    ) -> str:
         import requests
+
+        message: dict = {"role": "user", "content": prompt}
+        if images_b64:
+            message["images"] = images_b64
 
         payload: dict = {
             "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [message],
             "stream": False,
             "options": {"temperature": 0},
         }
@@ -317,19 +363,43 @@ class OllamaProvider:
         response.raise_for_status()
         return response.json().get("message", {}).get("content", "") or ""
 
-    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
-        doc_text = self._document_text(path)
-        if not doc_text.strip():
-            raise ValueError(
-                "อ่านข้อความจากไฟล์ไม่ได้ — ถ้าเป็น PDF สแกน/รูป ต้องติดตั้ง "
-                "Tesseract + poppler และตั้ง POPPLER_PATH/TESSERACT_CMD ใน .env"
-            )
-        prompt = f"{instructions}\n\n{_EXTRACT_PROMPT}\n\nเนื้อหาเอกสาร:\n{doc_text}"
-        text = self._chat(prompt, fmt=ReceiptBatch.model_json_schema())
+    def _parse(self, text: str) -> List[Receipt]:
         try:
             return ReceiptBatch.model_validate_json(text).receipts
         except Exception:
             return ReceiptBatch.model_validate(json.loads(text)).receipts
+
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
+        # Vision mode — ส่งรูปตรง ไม่ต้องผ่าน OCR
+        if self.is_vision_model:
+            if path.suffix.lower() == ".pdf":
+                # PDF digital → text mode เร็วกว่า; PDF สแกน → render เป็นรูป
+                text_pages = self._pdf_text_layer(path)
+                if sum(len(p.strip()) for p in text_pages) >= _MIN_TEXT_LAYER:
+                    return self._extract_text_mode(path, instructions)
+                images_b64 = self._pdf_pages_to_b64(path)
+            else:
+                images_b64 = self._image_to_b64(path)
+
+            prompt = f"{instructions}\n\n{_EXTRACT_PROMPT}"
+            text = self._chat(
+                prompt, fmt=ReceiptBatch.model_json_schema(), images_b64=images_b64
+            )
+            return self._parse(text)
+
+        # Text mode — OCR แล้วส่งข้อความ (model ที่ไม่รองรับ vision)
+        return self._extract_text_mode(path, instructions)
+
+    def _extract_text_mode(self, path: Path, instructions: str) -> List[Receipt]:
+        doc_text = self._document_text(path)
+        if not doc_text.strip():
+            raise ValueError(
+                "อ่านข้อความจากไฟล์ไม่ได้ — ถ้าเป็น PDF สแกน/รูป ลองใช้ vision model "
+                "(เช่น qwen2.5vl, llava) หรือติดตั้ง Tesseract + poppler"
+            )
+        prompt = f"{instructions}\n\n{_EXTRACT_PROMPT}\n\nเนื้อหาเอกสาร:\n{doc_text}"
+        text = self._chat(prompt, fmt=ReceiptBatch.model_json_schema())
+        return self._parse(text)
 
     def write_text(self, prompt: str, max_tokens: int) -> str:
         return self._chat(prompt).strip()
