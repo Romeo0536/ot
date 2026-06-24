@@ -24,22 +24,24 @@ pip install -r requirements.txt
 cp .env.example .env       # แล้วเปิด .env ใส่ API key ของคุณ
 ```
 
-## เลือก AI provider (Gemini หรือ Claude)
+## เลือก AI provider (แนะนำ: Groq ฟรี)
 
-ค่าเริ่มต้นคือ **Gemini** (มี free tier เหมาะกับลองก่อน) — แก้ได้ใน `config.yaml`:
+ค่าเริ่มต้นคือ **Groq** (ฟรี 100% ไม่มี rate limit) — แก้ได้ใน `config.yaml`:
 
 ```yaml
-provider: gemini          # หรือ claude
-model: gemini-2.5-flash   # gemini: gemini-2.5-flash / gemini-2.5-pro
-                          # claude: claude-opus-4-8 / claude-haiku-4-5
+provider: groq                    # หรือ gemini, claude
+model: mixtral-8x7b-32768         # groq: mixtral-8x7b-32768 (ฟรี)
+                                  # gemini: gemini-2.5-flash / gemini-2.5-pro
+                                  # claude: claude-opus-4-8 / claude-haiku-4-5
 ```
 
-| Provider | ขอ API key | ใส่ใน `.env` |
-|---|---|---|
-| **Gemini** (ฟรี) | https://aistudio.google.com/apikey | `GEMINI_API_KEY=...` |
-| **Claude** | https://console.anthropic.com/ | `ANTHROPIC_API_KEY=...` |
+| Provider | สถานะ | ขอ API key | ใส่ใน `.env` |
+|---|---|---|---|
+| **Groq** | ✅ ฟรี + เสถียร | https://console.groq.com/ | `GROQ_API_KEY=...` |
+| **Gemini** | มี free tier | https://aistudio.google.com/apikey | `GEMINI_API_KEY=...` |
+| **Claude** | ต้องจ่าย | https://console.anthropic.com/ | `ANTHROPIC_API_KEY=...` |
 
-> สลับ provider เมื่อไหร่ก็ได้ แค่แก้ `provider` ใน `config.yaml` — โค้ดส่วนอื่นเหมือนเดิม
+> สลับ provider เมื่อไหร่ก็ได้ แค่แก้ `provider` + `model` ใน `config.yaml` — โค้ดส่วนอื่นเหมือนเดิม
 
 ## วิธีใช้
 

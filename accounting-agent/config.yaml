@@ -1,13 +1,14 @@
 # ตั้งค่าระบบ AI Agent นักบัญชี
 # ปรับหมวดหมู่และโฟลเดอร์ได้ตามธุรกิจของคุณ
 
-# เลือก AI provider: gemini (มี free tier) หรือ claude
-provider: gemini
+# เลือก AI provider: groq (ฟรี แนะนำ), gemini, หรือ claude
+provider: groq
 
 # โมเดล — ให้ตรงกับ provider ที่เลือก
+#   groq: mixtral-8x7b-32768 (ฟรี ไม่มี rate limit)
 #   gemini: gemini-2.5-flash (เร็ว/ถูก), gemini-2.5-pro (แม่นกว่า)
 #   claude: claude-opus-4-8, claude-haiku-4-5
-model: gemini-2.5-flash
+model: mixtral-8x7b-32768
 
 paths:
   inbox: inbox          # โฟลเดอร์ที่ทิ้งใบเสร็จเข้ามา (PDF/รูป)

@@ -140,10 +140,63 @@ class ClaudeProvider:
         return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
+# --------------------------------------------------------------------------- #
+# Groq (Free + Fast)
+# --------------------------------------------------------------------------- #
+class GroqProvider:
+    """ใช้ Groq API (อ่าน GROQ_API_KEY จาก env) — ฟรี ไม่มี rate limit เหมาะสำหรับใบเสร็จ."""
+
+    def __init__(self, model: str):
+        from groq import Groq
+
+        self.client = Groq()
+        self.model = model
+
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
+        import base64
+
+        data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
+        mime = mime_for(path)
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": instructions + "\n\n" + _EXTRACT_PROMPT,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{data}"},
+                        },
+                    ],
+                }
+            ],
+            max_tokens=2048,
+        )
+        text = response.choices[0].message.content or ""
+        try:
+            return ReceiptBatch.model_validate_json(text).receipts
+        except Exception:
+            return ReceiptBatch.model_validate(json.loads(text)).receipts
+
+    def write_text(self, prompt: str, max_tokens: int) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+        )
+        return (response.choices[0].message.content or "").strip()
+
+
 def get_provider(name: str, model: str) -> Provider:
     name = name.lower()
     if name == "gemini":
         return GeminiProvider(model)
     if name == "claude":
         return ClaudeProvider(model)
-    raise ValueError(f"provider ไม่รองรับ: {name} (เลือก 'gemini' หรือ 'claude')")
+    if name == "groq":
+        return GroqProvider(model)
+    raise ValueError(f"provider ไม่รองรับ: {name} (เลือก 'gemini', 'claude', หรือ 'groq')")
