@@ -328,22 +328,27 @@ class OllamaProvider:
         return [Image.open(path)]
 
     def _pdf_to_pil(self, path: Path):
-        """Render PDF เป็น list ของ PIL Image — ลอง pypdfium2 ก่อน (ไม่ต้องมี poppler)."""
+        """Render PDF เป็น list ของ PIL Image — ลอง pypdfium2 ก่อน (ไม่ต้องมี poppler).
+
+        สำคัญ: ต้อง close() PdfDocument เพื่อปล่อยไฟล์บน Windows
+        (ไม่งั้นลบ tempdir ไม่ได้ — PermissionError)
+        """
         try:
             import pypdfium2 as pdfium
-
-            pdf = pdfium.PdfDocument(str(path))
-            return [pdf[i].render(scale=2.0).to_pil() for i in range(len(pdf))]
         except ImportError:
-            pass
+            import os
 
-        # fallback: pdf2image (ต้องมี poppler ติดตั้งไว้)
-        import os
+            from pdf2image import convert_from_path
 
-        from pdf2image import convert_from_path
+            poppler_path = os.getenv("POPPLER_PATH") or None
+            return convert_from_path(str(path), poppler_path=poppler_path)
 
-        poppler_path = os.getenv("POPPLER_PATH") or None
-        return convert_from_path(str(path), poppler_path=poppler_path)
+        pdf = pdfium.PdfDocument(str(path))
+        try:
+            images = [pdf[i].render(scale=1.8).to_pil() for i in range(len(pdf))]
+        finally:
+            pdf.close()  # ปลดล็อกไฟล์ก่อน Streamlit ลบ tempdir
+        return images
 
     def _document_text(self, path: Path) -> str:
         """ดึงข้อความจากไฟล์ พร้อมคั่นรายหน้าไว้ให้ LLM อ้างเลขหน้าได้."""
@@ -366,14 +371,16 @@ class OllamaProvider:
         return [base64.standard_b64encode(path.read_bytes()).decode("utf-8")]
 
     def _pdf_pages_to_b64(self, path: Path) -> List[str]:
-        """แปลง PDF ทุกหน้าเป็นรูป base64 (PNG)."""
+        """แปลง PDF ทุกหน้าเป็นรูป base64 (JPEG เล็กกว่า PNG ~70% — สำคัญสำหรับ payload)."""
         import base64
         import io
 
         out: List[str] = []
         for img in self._pdf_or_image_to_pil(path):
+            if img.mode != "RGB":
+                img = img.convert("RGB")  # JPEG ไม่รองรับ alpha
             buf = io.BytesIO()
-            img.save(buf, format="PNG")
+            img.save(buf, format="JPEG", quality=85, optimize=True)
             out.append(base64.standard_b64encode(buf.getvalue()).decode("utf-8"))
         return out
 
@@ -390,16 +397,23 @@ class OllamaProvider:
         if images_b64:
             message["images"] = images_b64
 
+        # context ใหญ่ขึ้นเมื่อมีรูปหลายหน้า — รูปกินที่ใน context พอควร
+        # ค่า default ของ Ollama (2048-4096) จะเล็กไป ทำให้ตอบสั้น/error
+        num_ctx = 8192 if images_b64 and len(images_b64) > 1 else 4096
+
         payload: dict = {
             "model": self.model,
             "messages": [message],
             "stream": False,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, "num_ctx": num_ctx},
         }
         if fmt is not None:
             payload["format"] = fmt  # โครง JSON บังคับ output (Ollama structured output)
-        response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=600)
-        response.raise_for_status()
+        response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=900)
+        if not response.ok:
+            # ดึงข้อความ error ของ Ollama ออกมาให้อ่านได้
+            detail = response.text[:500] if response.text else response.reason
+            raise RuntimeError(f"Ollama {response.status_code}: {detail}")
         return response.json().get("message", {}).get("content", "") or ""
 
     def _parse(self, text: str) -> List[Receipt]:

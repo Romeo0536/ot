@@ -220,7 +220,8 @@ if uploaded_files:
         # เว้นเวลาระหว่างไฟล์เฉพาะ Gemini free tier (กัน rate limit 15 req/นาที)
         throttle_seconds = 4 if st.session_state["provider"] == "gemini" else 0
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        # ignore_cleanup_errors: บน Windows บางครั้งไฟล์ยังถูก lock ตอนลบ tempdir
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
             for i, uf in enumerate(uploaded_files):
                 if i > 0 and throttle_seconds:
                     time.sleep(throttle_seconds)
