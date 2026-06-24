@@ -11,6 +11,7 @@ import yaml
 
 @dataclass
 class Config:
+    provider: str
     model: str
     inbox: Path
     organized: Path
@@ -25,7 +26,8 @@ class Config:
         data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         paths = data["paths"]
         return cls(
-            model=data.get("model", "claude-opus-4-8"),
+            provider=data.get("provider", "gemini"),
+            model=data.get("model", "gemini-2.5-flash"),
             inbox=base / paths["inbox"],
             organized=base / paths["organized"],
             ledger=base / paths["ledger"],

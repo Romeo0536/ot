@@ -6,9 +6,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
-import anthropic
-
 from .config import Config
+from .providers import Provider
 from .store import read_ledger
 
 
@@ -79,42 +78,33 @@ def _render_markdown(summary: dict, narrative: str | None) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _narrative(summary: dict, config: Config, client: anthropic.Anthropic) -> str:
-    """ให้ Claude เขียนสรุปสั้นๆ เป็นภาษาคนสำหรับส่งสำนักงานบัญชี."""
+def _narrative(summary: dict, provider: Provider) -> str:
+    """ให้ AI เขียนสรุปสั้นๆ เป็นภาษาคนสำหรับส่งสำนักงานบัญชี."""
     facts = "\n".join(
         f"- {cat}: {amt:,.2f}" for cat, amt in summary["by_category"].items()
     )
-    response = client.messages.create(
-        model=config.model,
-        max_tokens=1024,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    "เขียนสรุปบัญชีรายเดือนสั้นๆ 3-5 ประโยค เป็นภาษาไทย "
-                    "สำหรับส่งให้สำนักงานบัญชี น้ำเสียงเป็นทางการแต่อ่านง่าย "
-                    "ชี้ประเด็นที่น่าสนใจ เช่น หมวดที่ใช้จ่ายเยอะ หรือสิ่งที่ควรระวัง\n\n"
-                    f"เดือน: {summary['month']}\n"
-                    f"จำนวนใบเสร็จ: {summary['count']}\n"
-                    f"ยอดรวม: {summary['total']:,.2f}\n"
-                    f"ภาษีรวม: {summary['total_tax']:,.2f}\n"
-                    f"แยกตามหมวด:\n{facts}"
-                ),
-            }
-        ],
+    prompt = (
+        "เขียนสรุปบัญชีรายเดือนสั้นๆ 3-5 ประโยค เป็นภาษาไทย "
+        "สำหรับส่งให้สำนักงานบัญชี น้ำเสียงเป็นทางการแต่อ่านง่าย "
+        "ชี้ประเด็นที่น่าสนใจ เช่น หมวดที่ใช้จ่ายเยอะ หรือสิ่งที่ควรระวัง\n\n"
+        f"เดือน: {summary['month']}\n"
+        f"จำนวนใบเสร็จ: {summary['count']}\n"
+        f"ยอดรวม: {summary['total']:,.2f}\n"
+        f"ภาษีรวม: {summary['total_tax']:,.2f}\n"
+        f"แยกตามหมวด:\n{facts}"
     )
-    return "".join(b.text for b in response.content if b.type == "text").strip()
+    return provider.write_text(prompt, max_tokens=1024)
 
 
 def generate_brief(
     month: str,
     config: Config,
-    client: anthropic.Anthropic | None = None,
+    provider: Provider | None = None,
     with_narrative: bool = True,
 ) -> tuple[dict, str]:
     """สร้าง brief ของเดือน คืนค่า (summary, markdown)."""
     summary = summarize_month(config.ledger, month)
     narrative = None
-    if with_narrative and client is not None and summary["count"] > 0:
-        narrative = _narrative(summary, config, client)
+    if with_narrative and provider is not None and summary["count"] > 0:
+        narrative = _narrative(summary, provider)
     return summary, _render_markdown(summary, narrative)

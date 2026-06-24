@@ -21,10 +21,25 @@
 cd accounting-agent
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env       # แล้วเปิด .env ใส่ ANTHROPIC_API_KEY ของคุณ
+cp .env.example .env       # แล้วเปิด .env ใส่ API key ของคุณ
 ```
 
-ขอ API key ได้ที่ https://console.anthropic.com/
+## เลือก AI provider (Gemini หรือ Claude)
+
+ค่าเริ่มต้นคือ **Gemini** (มี free tier เหมาะกับลองก่อน) — แก้ได้ใน `config.yaml`:
+
+```yaml
+provider: gemini          # หรือ claude
+model: gemini-2.5-flash   # gemini: gemini-2.5-flash / gemini-2.5-pro
+                          # claude: claude-opus-4-8 / claude-haiku-4-5
+```
+
+| Provider | ขอ API key | ใส่ใน `.env` |
+|---|---|---|
+| **Gemini** (ฟรี) | https://aistudio.google.com/apikey | `GEMINI_API_KEY=...` |
+| **Claude** | https://console.anthropic.com/ | `ANTHROPIC_API_KEY=...` |
+
+> สลับ provider เมื่อไหร่ก็ได้ แค่แก้ `provider` ใน `config.yaml` — โค้ดส่วนอื่นเหมือนเดิม
 
 ## วิธีใช้
 
@@ -62,7 +77,7 @@ python -m accounting_agent.cli brief --month 2026-06
 ## ความปลอดภัย
 
 - ข้อมูลและใบเสร็จอยู่บนเครื่องคุณ (`.gitignore` กันไม่ให้ commit ขึ้น git)
-- ส่งไปที่ Claude API เฉพาะตอนอ่านใบเสร็จเท่านั้น
+- ส่งไปที่ AI provider (Gemini/Claude) เฉพาะตอนอ่านใบเสร็จเท่านั้น
 - ใบเสร็จที่ AI ไม่มั่นใจ (confidence < 0.6) จะถูกทำเครื่องหมาย ⚠️ ให้คนตรวจซ้ำ
 
 ## โครงสร้าง
@@ -73,7 +88,8 @@ accounting-agent/
 ├── accounting_agent/
 │   ├── models.py            # schema ของใบเสร็จ (Pydantic)
 │   ├── config.py            # โหลด config
-│   ├── extract.py           # อ่านใบเสร็จด้วย Claude
+│   ├── providers.py         # ตัวเชื่อม Gemini / Claude (สลับได้)
+│   ├── extract.py           # สร้างคำสั่งอ่านใบเสร็จ
 │   ├── organize.py          # จัดโฟลเดอร์
 │   ├── store.py             # สมุดบัญชี CSV
 │   ├── brief.py             # สรุปรายเดือน

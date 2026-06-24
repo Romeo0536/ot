@@ -10,26 +10,25 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import date
-from pathlib import Path
 
-import anthropic
 from dotenv import load_dotenv
 
 from .brief import generate_brief
 from .config import Config
 from .extract import SUPPORTED_SUFFIXES, extract_receipt
 from .organize import organize_file
+from .providers import Provider, get_provider
 from .store import append_receipt
 
 
-def _client() -> anthropic.Anthropic:
-    load_dotenv()
-    return anthropic.Anthropic()  # อ่าน ANTHROPIC_API_KEY จาก .env / environment
+def _provider(config: Config) -> Provider:
+    load_dotenv()  # โหลด API key จาก .env
+    return get_provider(config.provider, config.model)
 
 
 def cmd_process(config: Config) -> int:
     """อ่านทุกไฟล์ใน inbox -> ดึงข้อมูล -> จัดโฟลเดอร์ -> บันทึก ledger."""
-    client = _client()
+    provider = _provider(config)
     files = sorted(
         p for p in config.inbox.iterdir()
         if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
@@ -38,11 +37,11 @@ def cmd_process(config: Config) -> int:
         print(f"ไม่พบไฟล์ใบเสร็จใน {config.inbox}/ (รองรับ: PDF, JPG, PNG, WEBP, GIF)")
         return 0
 
-    print(f"พบ {len(files)} ไฟล์ กำลังประมวลผล...\n")
+    print(f"พบ {len(files)} ไฟล์ | provider: {config.provider} ({config.model})\n")
     ok = 0
     for path in files:
         try:
-            receipt = extract_receipt(path, config, client)
+            receipt = extract_receipt(path, config, provider)
             stored = organize_file(path, receipt, config.organized)
             append_receipt(config.ledger, receipt, path.name, str(stored))
             flag = "  ⚠️ ควรตรวจซ้ำ" if receipt.confidence < 0.6 else ""
@@ -63,8 +62,8 @@ def cmd_process(config: Config) -> int:
 
 def cmd_brief(config: Config, month: str, no_ai: bool) -> int:
     """สร้างสรุปบัญชีรายเดือนเป็นไฟล์ Markdown."""
-    client = None if no_ai else _client()
-    summary, markdown = generate_brief(month, config, client, with_narrative=not no_ai)
+    provider = None if no_ai else _provider(config)
+    summary, markdown = generate_brief(month, config, provider, with_narrative=not no_ai)
 
     out = config.organized / f"brief_{month}.md"
     out.parent.mkdir(parents=True, exist_ok=True)

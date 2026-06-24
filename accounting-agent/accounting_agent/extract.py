@@ -1,54 +1,17 @@
-"""อ่านใบเสร็จ (PDF/รูป) แล้วดึงข้อมูลออกมาเป็น Receipt ด้วย Claude.
+"""สร้างคำสั่งให้ AI อ่านใบเสร็จ แล้วเรียก provider ดึงข้อมูลเป็น Receipt.
 
-ใช้ structured output (messages.parse) เพื่อรับประกันว่าผลลัพธ์ตรงตาม schema.
+การอ่านไฟล์จริงและเรียก API อยู่ใน providers.py (Gemini หรือ Claude)
 """
 
 from __future__ import annotations
 
-import base64
 from pathlib import Path
-
-import anthropic
 
 from .config import Config
 from .models import Receipt
+from .providers import SUPPORTED_SUFFIXES, Provider  # re-export เพื่อความเข้ากันได้
 
-PDF_SUFFIXES = {".pdf"}
-IMAGE_MEDIA_TYPES = {
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-}
-
-SUPPORTED_SUFFIXES = PDF_SUFFIXES | set(IMAGE_MEDIA_TYPES)
-
-
-def _build_document_block(path: Path) -> dict:
-    """สร้าง content block ให้เหมาะกับชนิดไฟล์ (PDF หรือรูป)."""
-    suffix = path.suffix.lower()
-    data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
-
-    if suffix in PDF_SUFFIXES:
-        return {
-            "type": "document",
-            "source": {
-                "type": "base64",
-                "media_type": "application/pdf",
-                "data": data,
-            },
-        }
-    if suffix in IMAGE_MEDIA_TYPES:
-        return {
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": IMAGE_MEDIA_TYPES[suffix],
-                "data": data,
-            },
-        }
-    raise ValueError(f"ไม่รองรับไฟล์ชนิดนี้: {path.name}")
+__all__ = ["SUPPORTED_SUFFIXES", "extract_receipt"]
 
 
 def _instructions(config: Config) -> str:
@@ -67,26 +30,6 @@ def _instructions(config: Config) -> str:
     )
 
 
-def extract_receipt(path: Path, config: Config, client: anthropic.Anthropic) -> Receipt:
+def extract_receipt(path: Path, config: Config, provider: Provider) -> Receipt:
     """อ่านไฟล์ใบเสร็จหนึ่งไฟล์ คืนค่าเป็น Receipt."""
-    document_block = _build_document_block(path)
-
-    response = client.messages.parse(
-        model=config.model,
-        max_tokens=4096,
-        system=_instructions(config),
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    document_block,
-                    {
-                        "type": "text",
-                        "text": "อ่านใบเสร็จนี้แล้วดึงข้อมูลออกมาตาม schema",
-                    },
-                ],
-            }
-        ],
-        output_format=Receipt,
-    )
-    return response.parsed_output
+    return provider.extract_receipt(path, _instructions(config))

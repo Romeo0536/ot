@@ -1,4 +1,8 @@
-anthropic>=0.69
+# จำเป็น
 pydantic>=2.6
 PyYAML>=6.0
 python-dotenv>=1.0
+
+# เลือกติดตั้งตาม provider ที่ใช้ (จะใช้ตัวไหนก็ติดตั้งตัวนั้นพอ)
+google-genai>=1.0      # provider: gemini
+anthropic>=0.69        # provider: claude
