@@ -397,9 +397,13 @@ class OllamaProvider:
         if images_b64:
             message["images"] = images_b64
 
-        # context ใหญ่ขึ้นเมื่อมีรูปหลายหน้า — รูปกินที่ใน context พอควร
-        # ค่า default ของ Ollama (2048-4096) จะเล็กไป ทำให้ตอบสั้น/error
-        num_ctx = 8192 if images_b64 and len(images_b64) > 1 else 4096
+        # context ใหญ่ขึ้นเมื่อมีรูปหลายหน้า — รูปกินที่ใน context พอควร (≈ 1500-2000 tokens/รูป)
+        # ค่า default ของ Ollama (2048-4096) เล็กเกินไปสำหรับ vision
+        if images_b64:
+            # คำนวณตามจำนวนรูป + buffer; cap ที่ 32K (max ของ qwen2.5vl:7b)
+            num_ctx = min(32768, max(8192, len(images_b64) * 2000 + 2000))
+        else:
+            num_ctx = 4096
 
         payload: dict = {
             "model": self.model,
