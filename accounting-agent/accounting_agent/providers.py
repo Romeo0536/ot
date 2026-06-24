@@ -147,9 +147,13 @@ class GroqProvider:
     """ใช้ Groq API (อ่าน GROQ_API_KEY จาก env) — ฟรี ไม่มี rate limit เหมาะสำหรับใบเสร็จ."""
 
     def __init__(self, model: str):
+        import os
         from groq import Groq
 
-        self.client = Groq()
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("ต้องตั้ง GROQ_API_KEY ใน .env ก่อน")
+        self.client = Groq(api_key=api_key)
         self.model = model
 
     def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
