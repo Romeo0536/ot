@@ -224,17 +224,22 @@ class OllamaProvider:
         prompt = instructions + "\n\n" + _EXTRACT_PROMPT
 
         response = requests.post(
-            f"{self.base_url}/api/generate",
+            f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
-                "prompt": prompt,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt,
+                        "images": [data],
+                    }
+                ],
                 "stream": False,
-                "images": [data],
             },
             timeout=300,
         )
         response.raise_for_status()
-        text = response.json().get("response", "")
+        text = response.json().get("message", {}).get("content", "")
         try:
             return ReceiptBatch.model_validate_json(text).receipts
         except Exception:
@@ -244,16 +249,16 @@ class OllamaProvider:
         import requests
 
         response = requests.post(
-            f"{self.base_url}/api/generate",
+            f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
-                "prompt": prompt,
+                "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
             },
             timeout=300,
         )
         response.raise_for_status()
-        return (response.json().get("response", "") or "").strip()
+        return (response.json().get("message", {}).get("content", "") or "").strip()
 
 
 def get_provider(name: str, model: str) -> Provider:
