@@ -216,24 +216,29 @@ class OllamaProvider:
             )
 
     def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
-        import base64
         import requests
+        import pytesseract
+        from PIL import Image
+        from pdf2image import convert_from_path
 
-        data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
-        mime = mime_for(path)
-        prompt = instructions + "\n\n" + _EXTRACT_PROMPT
+        # แปลง PDF/รูป → รูปภาพ
+        if path.suffix.lower() == ".pdf":
+            images = convert_from_path(path)
+        else:
+            images = [Image.open(path)]
+
+        # ดึง text จากรูปด้วย OCR
+        ocr_text = ""
+        for img in images:
+            ocr_text += pytesseract.image_to_string(img, lang="tha+eng") + "\n"
+
+        prompt = instructions + "\n\n" + _EXTRACT_PROMPT + "\n\n" + f"เอกสาร:\n{ocr_text}"
 
         response = requests.post(
             f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt,
-                        "images": [data],
-                    }
-                ],
+                "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
             },
             timeout=300,
