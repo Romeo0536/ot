@@ -198,72 +198,121 @@ class GroqProvider:
 # --------------------------------------------------------------------------- #
 # Ollama (Local - Free 100%)
 # --------------------------------------------------------------------------- #
+# ตัวอักษรขั้นต่ำที่ถือว่า "อ่าน text layer จาก PDF ได้จริง" (ต่ำกว่านี้ = PDF สแกน ต้อง OCR)
+_MIN_TEXT_LAYER = 30
+
+
 class OllamaProvider:
-    """ใช้ Ollama (รัน local) — ฟรี 100% ไม่ต้องส่งข้อมูลออกไป."""
+    """ใช้ Ollama (รัน local) — ฟรี 100% ไม่ต้องส่งข้อมูลออกไป.
+
+    อ่านใบเสร็จด้วยวิธี: ดึงข้อความออกจากไฟล์ก่อน แล้วส่งให้ LLM แยกข้อมูล
+      - PDF ที่เป็นข้อความ (digital) → ใช้ pypdf อ่าน text layer (ไม่ต้องลงโปรแกรมเสริม)
+      - PDF สแกน / รูปภาพ → ใช้ OCR (pytesseract + poppler) เป็น fallback
+
+    env ที่เกี่ยวข้อง (ตั้งใน .env ได้):
+      OLLAMA_HOST    เปลี่ยน URL ของ Ollama (ค่าเริ่มต้น http://localhost:11434)
+      POPPLER_PATH   โฟลเดอร์ bin ของ poppler (ใช้ตอน OCR ไฟล์ PDF สแกน)
+      TESSERACT_CMD  พาธไฟล์ tesseract.exe (ถ้าไม่ได้อยู่ใน PATH)
+    """
 
     def __init__(self, model: str):
+        import os
+
         import requests
 
-        self.base_url = "http://localhost:11434"
+        self.base_url = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         self.model = model
-        # เช็คว่า Ollama ทำงาน
         try:
-            requests.get(f"{self.base_url}/api/tags", timeout=2)
+            requests.get(f"{self.base_url}/api/tags", timeout=3)
         except Exception as e:
             raise ValueError(
                 f"ไม่สามารถเชื่อมต่อ Ollama ที่ {self.base_url} — "
-                f"ให้รัน 'docker-compose up' ก่อน\nError: {e}"
+                f"ให้รัน 'docker-compose up -d' ก่อน\nError: {e}"
             )
 
-    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
-        import requests
+    # --- การดึงข้อความออกจากไฟล์ ------------------------------------------ #
+    def _pdf_text_layer(self, path: Path) -> List[str]:
+        """อ่านข้อความจาก text layer ของ PDF (คืนค่า list ข้อความรายหน้า)."""
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        return [(page.extract_text() or "") for page in reader.pages]
+
+    def _ocr_image_obj(self, img) -> str:
+        """OCR รูปหนึ่งรูป — ลองไทย+อังกฤษก่อน ถ้าไม่มี traineddata ไทยก็ใช้อังกฤษ."""
         import pytesseract
-        from PIL import Image
-        from pdf2image import convert_from_path
 
-        # แปลง PDF/รูป → รูปภาพ
+        try:
+            return pytesseract.image_to_string(img, lang="tha+eng")
+        except pytesseract.TesseractError:
+            return pytesseract.image_to_string(img, lang="eng")
+
+    def _ocr_pages(self, path: Path) -> List[str]:
+        """แปลงไฟล์เป็นรูปแล้ว OCR (คืนค่า list ข้อความรายหน้า)."""
+        import os
+
+        import pytesseract
+
+        tess_cmd = os.getenv("TESSERACT_CMD")
+        if tess_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tess_cmd
+
         if path.suffix.lower() == ".pdf":
-            images = convert_from_path(path)
+            from pdf2image import convert_from_path
+
+            poppler_path = os.getenv("POPPLER_PATH") or None
+            images = convert_from_path(str(path), poppler_path=poppler_path)
         else:
+            from PIL import Image
+
             images = [Image.open(path)]
+        return [self._ocr_image_obj(img) for img in images]
 
-        # ดึง text จากรูปด้วย OCR
-        ocr_text = ""
-        for img in images:
-            ocr_text += pytesseract.image_to_string(img, lang="tha+eng") + "\n"
+    def _document_text(self, path: Path) -> str:
+        """ดึงข้อความจากไฟล์ พร้อมคั่นรายหน้าไว้ให้ LLM อ้างเลขหน้าได้."""
+        if path.suffix.lower() == ".pdf":
+            pages = self._pdf_text_layer(path)
+            if sum(len(p.strip()) for p in pages) < _MIN_TEXT_LAYER:
+                pages = self._ocr_pages(path)  # PDF สแกน → OCR
+        else:
+            pages = self._ocr_pages(path)
 
-        prompt = instructions + "\n\n" + _EXTRACT_PROMPT + "\n\n" + f"เอกสาร:\n{ocr_text}"
-
-        response = requests.post(
-            f"{self.base_url}/api/chat",
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-            },
-            timeout=300,
+        return "\n\n".join(
+            f"=== หน้า {i} ===\n{text.strip()}" for i, text in enumerate(pages, 1)
         )
+
+    # --- เรียก Ollama ----------------------------------------------------- #
+    def _chat(self, prompt: str, fmt: object | None = None) -> str:
+        import requests
+
+        payload: dict = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0},
+        }
+        if fmt is not None:
+            payload["format"] = fmt  # โครง JSON บังคับ output (Ollama structured output)
+        response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=600)
         response.raise_for_status()
-        text = response.json().get("message", {}).get("content", "")
+        return response.json().get("message", {}).get("content", "") or ""
+
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
+        doc_text = self._document_text(path)
+        if not doc_text.strip():
+            raise ValueError(
+                "อ่านข้อความจากไฟล์ไม่ได้ — ถ้าเป็น PDF สแกน/รูป ต้องติดตั้ง "
+                "Tesseract + poppler และตั้ง POPPLER_PATH/TESSERACT_CMD ใน .env"
+            )
+        prompt = f"{instructions}\n\n{_EXTRACT_PROMPT}\n\nเนื้อหาเอกสาร:\n{doc_text}"
+        text = self._chat(prompt, fmt=ReceiptBatch.model_json_schema())
         try:
             return ReceiptBatch.model_validate_json(text).receipts
         except Exception:
             return ReceiptBatch.model_validate(json.loads(text)).receipts
 
     def write_text(self, prompt: str, max_tokens: int) -> str:
-        import requests
-
-        response = requests.post(
-            f"{self.base_url}/api/chat",
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-            },
-            timeout=300,
-        )
-        response.raise_for_status()
-        return (response.json().get("message", {}).get("content", "") or "").strip()
+        return self._chat(prompt).strip()
 
 
 def get_provider(name: str, model: str) -> Provider:
