@@ -10,13 +10,17 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import date
+from pathlib import Path
+from typing import List, Tuple
 
 from dotenv import load_dotenv
 
 from .brief import generate_brief
 from .config import Config
-from .extract import SUPPORTED_SUFFIXES, extract_receipt
-from .organize import move_to, plan_destination
+from .extract import SUPPORTED_SUFFIXES, extract_receipts
+from .models import Receipt
+from .organize import move_to, plan_destination, plan_multi_destination
+from .pdfsplit import page_count, pypdf_available, split_pages
 from .providers import Provider, get_provider
 from .store import append_receipt, ledger_writable
 
@@ -24,6 +28,67 @@ from .store import append_receipt, ledger_writable
 def _provider(config: Config) -> Provider:
     load_dotenv()  # โหลด API key จาก .env
     return get_provider(config.provider, config.model)
+
+
+def _can_split(path: Path, receipts: List[Receipt]) -> bool:
+    """แยกไฟล์ PDF ตามบิลได้ไหม (ต้องเป็น PDF หลายบิล + มี pypdf + เลขหน้าครบถูกต้อง)."""
+    if path.suffix.lower() != ".pdf" or len(receipts) < 2 or not pypdf_available():
+        return False
+    try:
+        total = page_count(path)
+    except Exception:
+        return False
+    for r in receipts:
+        if not r.page_start or not r.page_end:
+            return False
+        if not (1 <= r.page_start <= r.page_end <= total):
+            return False
+    return True
+
+
+def _store_file(
+    path: Path, receipts: List[Receipt], config: Config
+) -> List[Tuple[Receipt, Path]]:
+    """ลง ledger + จัดไฟล์ ให้ใบเสร็จทั้งหมดของไฟล์นี้. คืนค่า (receipt, ปลายทาง) แต่ละใบ."""
+    results: List[Tuple[Receipt, Path]] = []
+
+    # หนึ่งบิล — ย้ายไฟล์ทั้งไฟล์ตามปกติ
+    if len(receipts) == 1:
+        r = receipts[0]
+        dest = plan_destination(path, r, config.organized)
+        append_receipt(config.ledger, r, path.name, str(dest))
+        move_to(path, dest)
+        return [(r, dest)]
+
+    # หลายบิล + แยก PDF ได้ — ตัดเป็นไฟล์ละบิล แล้วลบไฟล์รวมต้นฉบับ
+    if _can_split(path, receipts):
+        for r in receipts:
+            dest = plan_destination(path, r, config.organized)
+            split_pages(path, r.page_start, r.page_end, dest)  # type: ignore[arg-type]
+            append_receipt(config.ledger, r, path.name, str(dest))
+            results.append((r, dest))
+        path.unlink()  # ไฟล์รวมถูกแยกครบแล้ว
+        return results
+
+    # หลายบิลแต่แยกไฟล์ไม่ได้ — เก็บไฟล์รวมไว้ที่เดียว ลง ledger ทุกบิล (ระบุเลขหน้าใน notes)
+    dest = plan_multi_destination(path, receipts, config.organized)
+    for r in receipts:
+        if r.page_start and r.page_end:
+            tag = f"[หน้า {r.page_start}-{r.page_end}]"
+            r.notes = f"{tag} {r.notes}" if r.notes else tag
+        append_receipt(config.ledger, r, path.name, str(dest))
+        results.append((r, dest))
+    move_to(path, dest)
+    return results
+
+
+def _print_receipt(receipt: Receipt, stored: Path) -> None:
+    flag = "  ⚠️ ควรตรวจซ้ำ" if receipt.confidence < 0.6 else ""
+    print(
+        f"    {receipt.receipt_date} | {receipt.vendor} | "
+        f"{receipt.total_amount:,.2f} {receipt.currency} | {receipt.category}{flag}\n"
+        f"    -> {stored}"
+    )
 
 
 def cmd_process(config: Config) -> int:
@@ -46,29 +111,31 @@ def cmd_process(config: Config) -> int:
         return 0
 
     print(f"พบ {len(files)} ไฟล์ | provider: {config.provider} ({config.model})\n")
-    ok = 0
+    ok_files = 0
+    total_bills = 0
     for path in files:
         try:
-            receipt = extract_receipt(path, config, provider)
-            # บันทึก ledger ก่อนย้ายไฟล์ — ถ้าเขียน ledger ไม่ได้ ไฟล์จะยังอยู่ใน inbox
-            # (รันใหม่ได้ ไม่มีไฟล์ค้างที่ organized โดยไม่มีข้อมูลใน ledger)
-            stored = plan_destination(path, receipt, config.organized)
-            append_receipt(config.ledger, receipt, path.name, str(stored))
-            move_to(path, stored)
-            flag = "  ⚠️ ควรตรวจซ้ำ" if receipt.confidence < 0.6 else ""
-            print(
-                f"✓ {path.name}\n"
-                f"    {receipt.receipt_date} | {receipt.vendor} | "
-                f"{receipt.total_amount:,.2f} {receipt.currency} | "
-                f"{receipt.category}{flag}\n"
-                f"    -> {stored}"
-            )
-            ok += 1
+            receipts = extract_receipts(path, config, provider)
+            if not receipts:
+                print(f"✗ {path.name} : อ่านไม่พบใบเสร็จในไฟล์", file=sys.stderr)
+                continue
+            results = _store_file(path, receipts, config)
+            header = f"✓ {path.name}"
+            if len(results) > 1:
+                header += f"  (พบ {len(results)} บิลในไฟล์เดียว)"
+            print(header)
+            for receipt, stored in results:
+                _print_receipt(receipt, stored)
+            ok_files += 1
+            total_bills += len(results)
         except Exception as exc:  # noqa: BLE001 — รายงานต่อ ไม่หยุดทั้งชุด
             print(f"✗ {path.name} : {exc}", file=sys.stderr)
 
-    print(f"\nเสร็จ: {ok}/{len(files)} ไฟล์ | บันทึกลง {config.ledger}")
-    return 0 if ok else 1
+    print(
+        f"\nเสร็จ: {ok_files}/{len(files)} ไฟล์ | รวม {total_bills} บิล | "
+        f"บันทึกลง {config.ledger}"
+    )
+    return 0 if ok_files else 1
 
 
 def cmd_brief(config: Config, month: str, no_ai: bool) -> int:
@@ -106,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         help="เดือนที่ต้องการ รูปแบบ YYYY-MM (ค่าเริ่มต้น: เดือนปัจจุบัน)",
     )
     p_brief.add_argument(
-        "--no-ai", action="store_true", help="สรุปด้วยตัวเลขล้วน ไม่เรียก Claude เขียนบรรยาย"
+        "--no-ai", action="store_true", help="สรุปด้วยตัวเลขล้วน ไม่เรียก AI เขียนบรรยาย"
     )
 
     args = parser.parse_args(argv)

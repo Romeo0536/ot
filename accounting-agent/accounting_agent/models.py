@@ -43,6 +43,22 @@ class Receipt(BaseModel):
     confidence: float = Field(
         description="ความมั่นใจในการอ่าน 0.0–1.0; ต่ำกว่า 0.6 ควรให้คนตรวจซ้ำ"
     )
+    page_start: Optional[int] = Field(
+        default=None,
+        description="หน้าเริ่มต้นของใบนี้ในไฟล์ PDF เริ่มนับจาก 1 (ใช้เมื่อมีหลายบิลในไฟล์เดียว)",
+    )
+    page_end: Optional[int] = Field(
+        default=None,
+        description="หน้าสุดท้ายของใบนี้ในไฟล์ PDF เริ่มนับจาก 1",
+    )
     notes: Optional[str] = Field(
         default=None, description="หมายเหตุ เช่น อ่านไม่ชัดตรงไหน หรือใบเสร็จเสียหาย"
+    )
+
+
+class ReceiptBatch(BaseModel):
+    """ผลการอ่านหนึ่งไฟล์ — อาจมีใบเสร็จได้หลายใบ (กรณีหลายบิลรวมในไฟล์เดียว)."""
+
+    receipts: List[Receipt] = Field(
+        description="ใบเสร็จทุกใบที่พบในเอกสารนี้ (อย่างน้อย 1 ใบ)"
     )

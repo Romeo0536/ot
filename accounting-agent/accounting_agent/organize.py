@@ -40,6 +40,27 @@ def plan_destination(source: Path, receipt: Receipt, organized_root: Path) -> Pa
     return dest
 
 
+def plan_multi_destination(
+    source: Path, receipts: list[Receipt], organized_root: Path
+) -> Path:
+    """ปลายทางสำหรับไฟล์ที่มีหลายบิลแต่แยกไฟล์ไม่ได้.
+
+    เก็บไฟล์รวมไว้ที่ organized/<ปี>/<เดือน>/_หลายบิล/ โดยใช้ชื่อไฟล์เดิม
+    (อิงปี/เดือนจากบิลใบแรกที่มีวันที่)
+    """
+    date = next((r.receipt_date for r in receipts if r.receipt_date), "0000-00-00")
+    year, month = (date.split("-") + ["00", "00"])[:2]
+    dest_dir = organized_root / year / month / "_หลายบิล"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = dest_dir / source.name
+    counter = 1
+    while dest.exists():
+        dest = dest_dir / f"{source.stem}_{counter}{source.suffix.lower()}"
+        counter += 1
+    return dest
+
+
 def move_to(source: Path, dest: Path) -> Path:
     """ย้ายไฟล์ไปยังปลายทางที่คำนวณไว้."""
     shutil.move(str(source), str(dest))

@@ -1,7 +1,7 @@
 """ตัวเชื่อม AI provider — รองรับทั้ง Gemini และ Claude สลับกันได้ผ่าน config.
 
 แต่ละ provider ทำ 2 อย่าง:
-  - extract_receipt: อ่านไฟล์ใบเสร็จ (PDF/รูป) คืนค่าเป็น Receipt
+  - extract_receipts: อ่านไฟล์ใบเสร็จ (PDF/รูป) คืนค่าเป็นรายการ Receipt (อาจหลายใบ)
   - write_text: ให้ AI เขียนข้อความบรรยาย (ใช้กับ Monthly Brief)
 
 import SDK แบบ lazy — ติดตั้งเฉพาะตัวที่ใช้ก็พอ
@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Protocol
+from typing import List, Protocol
 
-from .models import Receipt
+from .models import Receipt, ReceiptBatch
 
 # ชนิดไฟล์ที่รองรับ -> MIME type (ใช้ได้ทั้ง Gemini และ Claude)
 MIME_TYPES = {
@@ -26,7 +26,10 @@ MIME_TYPES = {
 }
 SUPPORTED_SUFFIXES = set(MIME_TYPES)
 
-_EXTRACT_PROMPT = "อ่านใบเสร็จนี้แล้วดึงข้อมูลออกมาตาม schema"
+_EXTRACT_PROMPT = (
+    "อ่านเอกสารนี้แล้วดึงข้อมูลใบเสร็จทุกใบออกมาตาม schema "
+    "(เอกสารอาจมีใบเสร็จได้หลายใบ)"
+)
 
 
 def mime_for(path: Path) -> str:
@@ -37,7 +40,7 @@ def mime_for(path: Path) -> str:
 
 
 class Provider(Protocol):
-    def extract_receipt(self, path: Path, instructions: str) -> Receipt: ...
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]: ...
     def write_text(self, prompt: str, max_tokens: int) -> str: ...
 
 
@@ -54,7 +57,7 @@ class GeminiProvider:
         self.client = genai.Client()
         self.model = model
 
-    def extract_receipt(self, path: Path, instructions: str) -> Receipt:
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
         from google.genai import types
 
         response = self.client.models.generate_content(
@@ -68,13 +71,13 @@ class GeminiProvider:
             config=types.GenerateContentConfig(
                 system_instruction=instructions,
                 response_mime_type="application/json",
-                response_schema=Receipt,
+                response_schema=ReceiptBatch,
             ),
         )
-        # response.parsed คือ Receipt instance; เผื่อ parse ไม่สำเร็จก็ fallback อ่าน text
-        if isinstance(response.parsed, Receipt):
-            return response.parsed
-        return Receipt.model_validate(json.loads(response.text))
+        # response.parsed คือ ReceiptBatch; เผื่อ parse ไม่สำเร็จก็ fallback อ่าน text
+        if isinstance(response.parsed, ReceiptBatch):
+            return response.parsed.receipts
+        return ReceiptBatch.model_validate(json.loads(response.text)).receipts
 
     def write_text(self, prompt: str, max_tokens: int) -> str:
         from google.genai import types
@@ -110,10 +113,10 @@ class ClaudeProvider:
             "source": {"type": "base64", "media_type": mime, "data": data},
         }
 
-    def extract_receipt(self, path: Path, instructions: str) -> Receipt:
+    def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:
         response = self.client.messages.parse(
             model=self.model,
-            max_tokens=4096,
+            max_tokens=8096,
             system=instructions,
             messages=[
                 {
@@ -124,9 +127,9 @@ class ClaudeProvider:
                     ],
                 }
             ],
-            output_format=Receipt,
+            output_format=ReceiptBatch,
         )
-        return response.parsed_output
+        return response.parsed_output.receipts
 
     def write_text(self, prompt: str, max_tokens: int) -> str:
         response = self.client.messages.create(

@@ -6,12 +6,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import List
 
 from .config import Config
 from .models import Receipt
 from .providers import SUPPORTED_SUFFIXES, Provider  # re-export เพื่อความเข้ากันได้
 
-__all__ = ["SUPPORTED_SUFFIXES", "extract_receipt"]
+__all__ = ["SUPPORTED_SUFFIXES", "extract_receipts"]
 
 
 def _instructions(config: Config) -> str:
@@ -26,10 +27,14 @@ def _instructions(config: Config) -> str:
         f"3. field 'category' ต้องเลือกจากหมวดเหล่านี้เท่านั้น:\n{category_list}\n"
         f"4. ถ้าใบเสร็จไม่ระบุสกุลเงิน ให้ใช้ {config.default_currency}\n"
         "5. ถ้าอ่านบางช่องไม่ออก ให้ใส่ null และลด confidence ลง "
-        "พร้อมอธิบายใน notes — อย่าเดาตัวเลขเอง"
+        "พร้อมอธิบายใน notes — อย่าเดาตัวเลขเอง\n"
+        "6. เอกสาร PDF อาจมีใบเสร็จหลายใบ ให้แยกเป็นหลายรายการใน receipts:\n"
+        "   - ถ้าใบเดียวกันยาวหลายหน้า (หัวบิล/รายการ/ยอดรวม) ให้รวมเป็น 1 รายการ\n"
+        "   - ถ้าเป็นคนละบิล (คนละร้าน/คนละเลขที่/คนละวันที่) ให้แยกเป็นคนละรายการ\n"
+        "   - ทุกรายการให้ระบุ page_start และ page_end (เลขหน้าใน PDF เริ่มนับจาก 1) ให้ถูกต้อง"
     )
 
 
-def extract_receipt(path: Path, config: Config, provider: Provider) -> Receipt:
-    """อ่านไฟล์ใบเสร็จหนึ่งไฟล์ คืนค่าเป็น Receipt."""
-    return provider.extract_receipt(path, _instructions(config))
+def extract_receipts(path: Path, config: Config, provider: Provider) -> List[Receipt]:
+    """อ่านไฟล์หนึ่งไฟล์ คืนค่าเป็นรายการใบเสร็จ (อาจมีได้หลายใบ)."""
+    return provider.extract_receipts(path, _instructions(config))
