@@ -51,8 +51,9 @@ class Provider(Protocol):
 class GeminiProvider:
     """ใช้ Google Gemini (อ่าน GEMINI_API_KEY หรือ GOOGLE_API_KEY จาก env)."""
 
-    _MAX_RETRIES = 4
-    _RETRY_CODES = {"503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"}
+    _MAX_RETRIES = 5
+    _UNAVAILABLE_CODES = ("503", "UNAVAILABLE")
+    _QUOTA_CODES = ("429", "RESOURCE_EXHAUSTED")
 
     def __init__(self, model: str):
         from google import genai
@@ -61,21 +62,46 @@ class GeminiProvider:
         self.client = genai.Client()
         self.model = model
 
+    @staticmethod
+    def _parse_retry_delay(msg: str) -> float | None:
+        """อ่านค่า retryDelay จากข้อความ error ของ Gemini เช่น 'retryDelay': '21s'"""
+        import re
+
+        match = re.search(r"['\"]retryDelay['\"]:\s*['\"](\d+(?:\.\d+)?)s['\"]", msg)
+        return float(match.group(1)) if match else None
+
     def _generate(self, **kwargs):
-        """เรียก generate_content พร้อม retry อัตโนมัติเมื่อ Gemini 503/429."""
+        """เรียก generate_content พร้อม retry — รองรับทั้ง 503 และ 429 (quota)."""
         last_exc: Exception = RuntimeError("no attempt")
         for attempt in range(self._MAX_RETRIES):
             try:
                 return self.client.models.generate_content(**kwargs)
             except Exception as exc:
                 msg = str(exc)
-                if any(code in msg for code in self._RETRY_CODES):
-                    if attempt < self._MAX_RETRIES - 1:
-                        wait = 2 ** attempt  # 1s, 2s, 4s
-                        time.sleep(wait)
-                        last_exc = exc
-                        continue
-                raise
+                is_quota = any(code in msg for code in self._QUOTA_CODES)
+                is_unavailable = any(code in msg for code in self._UNAVAILABLE_CODES)
+
+                if not (is_quota or is_unavailable):
+                    raise
+                if attempt >= self._MAX_RETRIES - 1:
+                    last_exc = exc
+                    break
+
+                if is_quota:
+                    # ใช้ retryDelay จาก response ถ้ามี + บัฟเฟอร์ 2 วิ; ไม่งั้น 30/60/90 วิ
+                    delay = self._parse_retry_delay(msg)
+                    wait = (delay + 2) if delay else 30 * (attempt + 1)
+                else:
+                    wait = 2 ** attempt  # 1, 2, 4, 8 วินาที สำหรับ 503
+                time.sleep(wait)
+                last_exc = exc
+
+        # หมดความพยายาม — ส่ง error ที่อ่านง่ายกลับไป
+        if any(code in str(last_exc) for code in self._QUOTA_CODES):
+            raise RuntimeError(
+                "Gemini quota เต็มแล้ว (free tier 15-20 req/นาที) — "
+                "รอ 1-2 นาทีแล้วลองใหม่ หรือสลับไปใช้ Ollama (ไม่มี rate limit)"
+            ) from last_exc
         raise last_exc
 
     def extract_receipts(self, path: Path, instructions: str) -> List[Receipt]:

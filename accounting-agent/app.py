@@ -217,8 +217,13 @@ if uploaded_files:
         log_area = st.empty()
         log_lines: list[str] = []
 
+        # เว้นเวลาระหว่างไฟล์เฉพาะ Gemini free tier (กัน rate limit 15 req/นาที)
+        throttle_seconds = 4 if st.session_state["provider"] == "gemini" else 0
+
         with tempfile.TemporaryDirectory() as tmpdir:
             for i, uf in enumerate(uploaded_files):
+                if i > 0 and throttle_seconds:
+                    time.sleep(throttle_seconds)
                 log_lines.append(f"⏳ กำลังอ่าน **{uf.name}**…")
                 log_area.markdown("\n\n".join(log_lines))
                 progress_bar.progress((i) / n, text=f"อ่านไฟล์ {i+1}/{n}: {uf.name}")
