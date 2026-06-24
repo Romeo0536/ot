@@ -28,39 +28,7 @@ st.set_page_config(
 )
 
 # --------------------------------------------------------------------------- #
-# Sidebar — ตั้งค่า API Key
-# --------------------------------------------------------------------------- #
-with st.sidebar:
-    st.header("⚙️ ตั้งค่า")
-
-    api_key_input = st.text_input(
-        "Gemini API Key",
-        value=os.getenv("GEMINI_API_KEY", ""),
-        type="password",
-        help="ขอ key ฟรีที่ https://aistudio.google.com/apikey",
-        placeholder="AIza...",
-    )
-    if api_key_input:
-        os.environ["GEMINI_API_KEY"] = api_key_input
-
-    st.divider()
-    st.caption(
-        "**วิธีใช้**\n"
-        "1. ใส่ Gemini API Key (ฟรี)\n"
-        "2. อัปโหลด PDF / รูปใบเสร็จ\n"
-        "3. กด **เริ่มอ่าน**\n"
-        "4. ดาวน์โหลด Excel"
-    )
-    st.caption("รองรับ: PDF, JPG, PNG, WEBP, GIF")
-
-# --------------------------------------------------------------------------- #
-# Header
-# --------------------------------------------------------------------------- #
-st.title("🧾 AI Agent นักบัญชี")
-st.caption("อัปโหลดบิล/ใบเสร็จ (PDF หรือรูปภาพ) → AI อ่านข้อมูล → ดาวน์โหลด Excel")
-
-# --------------------------------------------------------------------------- #
-# Load config & provider (lazy, cached ตลอด session)
+# Load config (อ่านก่อนเพื่อรู้ว่าใช้ provider ไหน)
 # --------------------------------------------------------------------------- #
 @st.cache_resource(show_spinner=False)
 def _load_config():
@@ -70,11 +38,81 @@ def _load_config():
     return Config.load(config_path)
 
 
-def _get_provider(api_key: str):
+_cfg = _load_config()
+_PROVIDER = _cfg.provider.lower()
+
+# provider ที่ต้องใช้ API key (Ollama รัน local ไม่ต้องมี key)
+_API_KEY_ENV = {
+    "gemini": "GEMINI_API_KEY",
+    "claude": "ANTHROPIC_API_KEY",
+    "groq": "GROQ_API_KEY",
+}
+_PROVIDER_LABEL = {
+    "gemini": "Gemini API Key",
+    "claude": "Anthropic API Key",
+    "groq": "Groq API Key",
+}
+_KEY_HELP = {
+    "gemini": "ขอ key ฟรีที่ https://aistudio.google.com/apikey",
+    "claude": "ขอ key ที่ https://console.anthropic.com/",
+    "groq": "ขอ key ฟรีที่ https://console.groq.com/",
+}
+
+# --------------------------------------------------------------------------- #
+# Sidebar — ตั้งค่า (แสดงช่อง API key เฉพาะ provider ที่ต้องใช้)
+# --------------------------------------------------------------------------- #
+with st.sidebar:
+    st.header("⚙️ ตั้งค่า")
+    st.caption(f"AI ที่ใช้: **{_PROVIDER}** ({_cfg.model})")
+
+    api_key_input = ""
+    needs_key = _PROVIDER in _API_KEY_ENV
+    if needs_key:
+        env_name = _API_KEY_ENV[_PROVIDER]
+        api_key_input = st.text_input(
+            _PROVIDER_LABEL[_PROVIDER],
+            value=os.getenv(env_name, ""),
+            type="password",
+            help=_KEY_HELP[_PROVIDER],
+            placeholder="วาง API key ที่นี่",
+        )
+        if api_key_input:
+            os.environ[env_name] = api_key_input
+    else:
+        # Ollama — ไม่ต้องมี API key
+        st.success("🦙 ใช้ Ollama (local) — ไม่ต้องใช้ API key", icon="✅")
+        st.caption("ต้องเปิดโปรแกรม Ollama ค้างไว้ (ไอคอนลามะมุมขวาล่าง)")
+
+    st.divider()
+    if needs_key:
+        st.caption(
+            "**วิธีใช้**\n"
+            "1. วาง API key ด้านบน\n"
+            "2. อัปโหลด PDF / รูปใบเสร็จ\n"
+            "3. กด **เริ่มอ่าน**\n"
+            "4. ดาวน์โหลด Excel"
+        )
+    else:
+        st.caption(
+            "**วิธีใช้**\n"
+            "1. เปิดโปรแกรม Ollama\n"
+            "2. อัปโหลด PDF / รูปใบเสร็จ\n"
+            "3. กด **เริ่มอ่าน**\n"
+            "4. ดาวน์โหลด Excel"
+        )
+    st.caption("รองรับ: PDF, JPG, PNG, WEBP, GIF")
+
+# --------------------------------------------------------------------------- #
+# Header
+# --------------------------------------------------------------------------- #
+st.title("🧾 AI Agent นักบัญชี")
+st.caption("อัปโหลดบิล/ใบเสร็จ (PDF หรือรูปภาพ) → AI อ่านข้อมูล → ดาวน์โหลด Excel")
+
+
+def _get_provider():
     from accounting_agent.providers import get_provider
 
-    config = _load_config()
-    return get_provider(config.provider, config.model)
+    return get_provider(_cfg.provider, _cfg.model)
 
 
 # --------------------------------------------------------------------------- #
@@ -99,14 +137,14 @@ if uploaded_files:
     run = st.button(btn_label, type="primary", use_container_width=True)
 
     if run:
-        key = os.getenv("GEMINI_API_KEY", "")
-        if not key:
-            st.error("กรุณาใส่ Gemini API Key ในแถบซ้าย", icon="🔑")
+        # provider ที่ต้องใช้ key — เช็คก่อนว่าใส่แล้วยัง
+        if needs_key and not os.getenv(_API_KEY_ENV[_PROVIDER], ""):
+            st.error(f"กรุณาใส่ {_PROVIDER_LABEL[_PROVIDER]} ในแถบซ้าย", icon="🔑")
             st.stop()
 
-        config = _load_config()
+        config = _cfg
         try:
-            provider = _get_provider(key)
+            provider = _get_provider()
         except Exception as e:
             st.error(f"เชื่อมต่อ AI ไม่ได้: {e}", icon="❌")
             st.stop()
@@ -165,9 +203,9 @@ if uploaded_files:
 
         if all_rows:
             st.session_state["results"] = all_rows
-            st.session_state["result_key"] = api_key_input  # invalidate cache on key change
         if not all_rows and errors:
-            st.error("อ่านไม่ได้เลย กรุณาตรวจสอบ API Key และไฟล์", icon="❌")
+            hint = "ตรวจสอบว่าเปิด Ollama แล้ว" if not needs_key else "ตรวจสอบ API Key"
+            st.error(f"อ่านไม่ได้เลย — {hint} และลองใหม่อีกครั้ง", icon="❌")
 
 # --------------------------------------------------------------------------- #
 # Results table & Excel download
