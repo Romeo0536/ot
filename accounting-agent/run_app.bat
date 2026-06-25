@@ -34,11 +34,12 @@ if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
 
 echo.
 echo Opening web interface at http://localhost:8501
+echo Also accessible from other devices on the same network
 echo Press Ctrl+C to close this window when done
 echo.
 
 REM Open browser automatically after 3 seconds
 start "" cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:8501"
 
-.venv\Scripts\streamlit.exe run app.py --server.headless true --browser.gatherUsageStats false --server.address localhost
+.venv\Scripts\streamlit.exe run app.py --server.headless true --browser.gatherUsageStats false --server.address 0.0.0.0
 pause
